@@ -16,26 +16,22 @@ class SbuNonKonstruksiController extends Controller
     public function store(Request $request)
     {
         $request->validate([
+            'no' => 'required|integer|unique:sbu_non_konstruksi,no', // Memperbaiki kesalahan ketik
             'nama_badan_usaha' => 'required',
             'alamat' => 'required',
             'direktur' => 'required',
             'kode_sbu' => 'required',
             'tanggal_masa_berlaku' => 'required|date',
             'sampai_dengan' => 'required|date',
-            'no' => 'required|interger',
         ]);
 
-        $sbuKonstruksi = SbuNonKonstruksi::create($request->all());
+        // Buat entri baru
+        $sbuNonKonstruksi = SbuNonKonstruksi::create($request->all());
 
-        return response()->json($sbuKonstruksi, 201);
+        return response()->json($sbuNonKonstruksi, 201);
     }
 
     public function show($id)
-    {
-        return SbuNonKonstruksi::find($id);
-    }
-
-    public function update(Request $request, $id)
     {
         $sbuNonKonstruksi = SbuNonKonstruksi::find($id);
 
@@ -43,20 +39,51 @@ class SbuNonKonstruksiController extends Controller
             return response()->json(['message' => 'Data tidak ditemukan'], 404);
         }
 
-        $sbuNonKonstruksi->update($request->all());
+        return response()->json($sbuNonKonstruksi);
+    }
+
+    public function update(Request $request, $id)
+    {
+        // Validasi input
+        $request->validate([
+            'no' => 'required|integer|unique:sbu_non_konstruksi,no,' . $id, // Pastikan no unik, kecuali untuk ID ini
+            'nama_badan_usaha' => 'required',
+            'alamat' => 'required',
+            'direktur' => 'required',
+            'kode_sbu' => 'required',
+            'tanggal_masa_berlaku' => 'required|date',
+            'sampai_dengan' => 'required|date',
+        ]);
+
+        // Cari data berdasarkan ID
+        $sbuNonKonstruksi = SbuNonKonstruksi::find($id);
+
+        if (!$sbuNonKonstruksi) {
+            return response()->json(['message' => 'Data tidak ditemukan'], 404);
+        }
+
+        // Update data tanpa mengubah kolom 'no'
+        $sbuNonKonstruksi->update($request->only([
+            'nama_badan_usaha',
+            'alamat',
+            'direktur',
+            'kode_sbu',
+            'tanggal_masa_berlaku',
+            'sampai_dengan'
+        ]));
 
         return response()->json($sbuNonKonstruksi);
     }
 
-    public function destroy(string $id)
+    public function destroy($id)
     {
-        $sbuKonstruksi = SbuNonKonstruksi::find($id);
+        $sbuNonKonstruksi = SbuNonKonstruksi::find($id);
 
-        if (!$sbuKonstruksi) {
+        if (!$sbuNonKonstruksi) {
             return response()->json(['message' => 'Data tidak ditemukan'], 404);
         }
 
-        $sbuKonstruksi->delete();
+        $sbuNonKonstruksi->delete();
 
         return response()->json(['message' => 'Data berhasil dihapus']);
     }

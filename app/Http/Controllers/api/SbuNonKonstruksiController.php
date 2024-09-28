@@ -87,4 +87,9 @@ class SbuNonKonstruksiController extends Controller
 
         return response()->json(['message' => 'Data berhasil dihapus']);
     }
+    public function count()
+    {
+        $count = SbuNonKonstruksi::count();
+        return response()->json(['count' => $count]);
+    }
 }

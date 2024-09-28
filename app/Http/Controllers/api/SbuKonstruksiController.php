@@ -81,4 +81,15 @@ class SbuKonstruksiController extends Controller
 
         return response()->json(['message' => 'Data berhasil dihapus']);
     }
+
+    public function count()
+    {
+        $count = SbuKonstruksi::count();
+        return response()->json(['count' => $count]);
+    }
+    public function indexPublic()
+    {
+        $data = SbuKonstruksi::select('nama_badan_usaha', 'direktur', 'alamat', 'tanggal_masa_berlaku', 'sampai_dengan', 'kode_sbu')->get();
+        return response()->json($data);
+    }
 }

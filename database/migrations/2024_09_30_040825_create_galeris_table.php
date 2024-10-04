@@ -4,31 +4,28 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateGaleriTable extends Migration
+return new class extends Migration
 {
     /**
      * Run the migrations.
-     *
-     * @return void
      */
     public function up()
     {
-        Schema::create('galeri', function (Blueprint $table) {
+        Schema::create('galeris', function (Blueprint $table) {
             $table->id();
-            $table->string('gambar'); // Path untuk gambar
-            $table->string('judul'); // Judul galeri
-            $table->text('caption'); // Caption galeri
+            $table->string('judul');
+            $table->text('caption');
+            $table->string('gambar')->nullable();
             $table->timestamps();
         });
     }
 
+
     /**
      * Reverse the migrations.
-     *
-     * @return void
      */
     public function down()
     {
-        Schema::dropIfExists('galeri');
+        Schema::dropIfExists('galeris');
     }
-}
+};

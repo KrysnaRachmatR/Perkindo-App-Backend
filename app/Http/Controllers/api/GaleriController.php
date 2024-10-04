@@ -1,103 +1,85 @@
 <?php
 
-namespace App\Http\Controllers\api;
+namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\Galeri;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Storage;
 
 class GaleriController extends Controller
 {
-    // Get all galleries
+    // Get all galeri
     public function index()
     {
-        $galeri = Galeri::all();
-        return response()->json($galeri, 200);
+        return Galeri::all();
     }
 
-    // Get single gallery item
-    public function show($id)
-    {
-        $galeri = Galeri::find($id);
-
-        if (!$galeri) {
-            return response()->json(['message' => 'Gallery not found'], 404);
-        }
-
-        return response()->json($galeri, 200);
-    }
-
-    // Create new gallery item
+    // Create a new galeri
     public function store(Request $request)
     {
         $request->validate([
-            'gambar' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            'judul' => 'required|string|max:255',
+            'judul' => 'required|string',
             'caption' => 'required|string',
+            'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        // Store the image
-        $imagePath = $request->file('gambar')->store('galeri', 'public');
+        $galeri = new Galeri();
+        $galeri->judul = $request->judul;
+        $galeri->caption = $request->caption;
 
-        // Create the gallery record
-        $galeri = Galeri::create([
-            'gambar' => $imagePath,
-            'judul' => $request->judul,
-            'caption' => $request->caption,
-        ]);
+        if ($request->hasFile('gambar')) {
+            $path = $request->file('gambar')->store('galeri', 'public');
+            $galeri->gambar = $path;
+        }
 
+        $galeri->save();
         return response()->json($galeri, 201);
     }
 
-    // Update gallery item
+    // Update a galeri
     public function update(Request $request, $id)
     {
-        $galeri = Galeri::find($id);
-
-        if (!$galeri) {
-            return response()->json(['message' => 'Gallery not found'], 404);
-        }
-
+        // Validasi input
         $request->validate([
-            'gambar' => 'image|mimes:jpeg,png,jpg,gif,svg|max:2048',
-            'judul' => 'string|max:255',
-            'caption' => 'string',
+            'judul' => 'required|string|max:255',
+            'caption' => 'required|string',
+            'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // Anda dapat menyesuaikan ukuran dan format sesuai kebutuhan
         ]);
 
-        // Update image if provided
-        if ($request->hasFile('gambar')) {
-            // Delete old image
-            Storage::disk('public')->delete($galeri->gambar);
+        $galeri = Galeri::findOrFail($id);
 
-            // Store new image
-            $imagePath = $request->file('gambar')->store('galeri', 'public');
-            $galeri->gambar = $imagePath;
+        // Update data
+        $galeri->judul = $request->judul;
+        $galeri->caption = $request->caption;
+
+        // Cek apakah ada gambar yang di-upload
+        if ($request->hasFile('gambar')) {
+            // Hapus gambar lama jika ada
+            if ($galeri->gambar) {
+                Storage::delete($galeri->gambar);
+            }
+
+            // Simpan gambar baru
+            $galeri->gambar = $request->file('gambar')->store('galeri', 'public'); // Simpan di folder 'storage/app/public/galeri'
         }
 
-        // Update title and caption
-        $galeri->judul = $request->judul ?? $galeri->judul;
-        $galeri->caption = $request->caption ?? $galeri->caption;
-        $galeri->save();
+        $galeri->save(); // Simpan perubahan
 
-        return response()->json($galeri, 200);
+        return response()->json([
+            'message' => 'Data updated successfully',
+            'data' => $galeri,
+        ]);
     }
 
-    // Delete gallery item
+    // Delete a galeri
     public function destroy($id)
     {
-        $galeri = Galeri::find($id);
-
-        if (!$galeri) {
-            return response()->json(['message' => 'Gallery not found'], 404);
+        $galeri = Galeri::findOrFail($id);
+        if ($galeri->gambar) {
+            Storage::disk('public')->delete($galeri->gambar);
         }
-
-        // Delete image file
-        Storage::disk('public')->delete($galeri->gambar);
-
-        // Delete gallery record
         $galeri->delete();
-
-        return response()->json(['message' => 'Gallery deleted successfully'], 200);
+        return response()->json(null, 204);
     }
 }

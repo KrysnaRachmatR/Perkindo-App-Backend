@@ -9,11 +9,13 @@ class Galeri extends Model
 {
     use HasFactory;
 
-    protected $table = 'galeri';
+    protected $table = 'galeris';
 
     protected $fillable = [
-        'gambar',
         'judul',
         'caption',
+        'gambar',
     ];
+
+    public $timestamps = true;
 }

@@ -40,11 +40,10 @@ class GaleriController extends Controller
     // Update a galeri
     public function update(Request $request, $id)
     {
-        // Validasi input
         $request->validate([
             'judul' => 'required|string|max:255',
             'caption' => 'required|string',
-            'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // Anda dapat menyesuaikan ukuran dan format sesuai kebutuhan
+            'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         $galeri = Galeri::findOrFail($id);
@@ -61,15 +60,23 @@ class GaleriController extends Controller
             }
 
             // Simpan gambar baru
-            $galeri->gambar = $request->file('gambar')->store('galeri', 'public'); // Simpan di folder 'storage/app/public/galeri'
+            $galeri->gambar = $request->file('gambar')->store('galeri', 'public');
         }
 
-        $galeri->save(); // Simpan perubahan
+        // Simpan perubahan
+        $galeri->save();
 
+        // Siapkan respons JSON
         return response()->json([
             'message' => 'Data updated successfully',
-            'data' => $galeri,
-        ]);
+            'data' => [
+                'id' => $galeri->id,
+                'judul' => $galeri->judul,
+                'caption' => $galeri->caption,
+                'gambar' => $galeri->gambar, // Menyertakan URL gambar yang baru di-upload
+                'updated_at' => $galeri->updated_at, // Tanggal terakhir diperbarui
+            ],
+        ], 200); // Kode status HTTP 200 OK
     }
 
     // Delete a galeri

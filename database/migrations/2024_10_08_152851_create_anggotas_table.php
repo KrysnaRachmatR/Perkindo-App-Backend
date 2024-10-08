@@ -11,15 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('sbu_konstruksi', function (Blueprint $table) {
+        Schema::create('anggota', function (Blueprint $table) {
             $table->id();
-            $table->integer('no')->unique();
             $table->string('nama_badan_usaha');
             $table->string('alamat');
             $table->string('direktur');
             $table->string('kode_sbu');
-            $table->string('tanggal_masa_berlaku');
-            $table->string('sampai_dengan');
+            $table->date('tanggal_masa_berlaku');
+            $table->date('sampai_dengan');
+            $table->enum('jenis_sbu', ['konstruksi', 'non-konstruksi']);
+            $table->boolean('status_aktif')->default(false);
             $table->timestamps();
         });
     }
@@ -29,6 +30,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('sbu_konstruksi');
+        Schema::dropIfExists('anggota');
     }
 };

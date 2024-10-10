@@ -4,11 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens; // Pastikan ini ditambahkan
 
 class Member extends Model
 {
-    use HasFactory, Notifiable;
+    use HasFactory, HasApiTokens; // Tambahkan HasApiTokens di sini
 
     protected $fillable = [
         'nama_perusahaan',
@@ -22,7 +22,4 @@ class Member extends Model
     protected $hidden = [
         'password',
     ];
-
-    // Optional: jika menggunakan timestamps
-    public $timestamps = true;
 }

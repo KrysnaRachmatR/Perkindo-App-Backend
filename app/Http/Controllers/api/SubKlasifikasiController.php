@@ -25,6 +25,18 @@ class SubKlasifikasiController extends Controller
     return response()->json($subKlasifikasi, 201);
   }
 
+  public function search(Request $request)
+  {
+    $query = $request->input('q');  // Ambil parameter 'q' dari query string
+
+    $results = SubKlasifikasi::where('nama_sub_klasifikasi', 'LIKE', '%' . $query . '%')->get();
+
+    if ($results->isEmpty()) {
+      return response()->json(['message' => 'Tidak ditemukan sub-klasifikasi dengan kata kunci tersebut.'], 404);
+    }
+
+    return response()->json($results, 200);
+  }
   public function show($id)
   {
     return SubKlasifikasi::with('klasifikasi')->findOrFail($id);

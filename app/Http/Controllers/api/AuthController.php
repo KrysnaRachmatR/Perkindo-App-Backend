@@ -2,54 +2,88 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Models\Admin;
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Models\Member;
+use App\Models\Admin; // Pastikan Anda mengimpor model Admin
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function login(Request $request)
+    /**
+     * Register Anggota (Member).
+     */
+    public function register(Request $request)
     {
-        // Validasi input
-        $credentials = $request->validate([
-            'username' => 'required|string',
-            'password' => 'required|string|min:6',
+        $request->validate([
+            'nama_perusahaan' => 'required|string',
+            'nama_direktur' => 'required|string',
+            'nama_penanggung_jawab' => 'required|string',
+            'alamat_perusahaan' => 'required|string',
+            'email' => 'required|string|email|unique:members',
+            'password' => 'required|string|min:8|confirmed',
         ]);
 
-        // Mencari admin berdasarkan username
-        $admin = Admin::where('username', $credentials['username'])->first();
+        $member = Member::create([
+            'nama_perusahaan' => $request->nama_perusahaan,
+            'nama_direktur' => $request->nama_direktur,
+            'nama_penanggung_jawab' => $request->nama_penanggung_jawab,
+            'alamat_perusahaan' => $request->alamat_perusahaan,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+        ]);
 
-        // Cek apakah admin ditemukan dan password valid
-        if ($admin && password_verify($credentials['password'], $admin->password)) {
-            // Buat token
-            $token = $admin->createToken('API Token')->plainTextToken;
+        return response()->json([
+            'message' => 'Pendaftaran berhasil',
+            'member' => $member,
+        ], 201);
+    }
+
+    /**
+     * Login untuk Admin atau Anggota.
+     */
+    public function login(Request $request)
+    {
+        $credentials = $request->validate([
+            'email' => 'required|string|email',
+            'password' => 'required|string|min:8',
+        ]);
+
+        // Cek apakah email milik admin
+        $admin = Admin::where('email', $credentials['email'])->first();
+        if ($admin && Hash::check($credentials['password'], $admin->password)) {
+            $token = $admin->createToken('Admin Token', ['admin'])->plainTextToken;
 
             return response()->json([
-                'message' => 'Login successful',
+                'message' => 'Login as admin successful',
                 'token' => $token,
                 'user' => $admin,
             ], 200);
         }
 
-        return response()->json([
-            'message' => 'Invalid credentials'
-        ], 401);
-    }
+        // Jika bukan admin, cek apakah email milik anggota
+        $member = Member::where('email', $credentials['email'])->first();
+        if ($member && Hash::check($credentials['password'], $member->password)) {
+            $token = $member->createToken('Member Token', ['member'])->plainTextToken;
 
+            return response()->json([
+                'message' => 'Login as member successful',
+                'token' => $token,
+                'user' => $member,
+            ], 200);
+        }
+
+        // Jika tidak cocok, kembalikan pesan error
+        return response()->json(['message' => 'Invalid credentials'], 401);
+    }
 
     public function logout(Request $request)
     {
-        // Mengambil admin yang sedang login
-        $admin = Auth::guard('admin')->user();
+        $request->user()->currentAccessToken()->delete();
 
-        if ($admin) {
-            // Hapus semua token yang dimiliki admin
-            $admin->tokens()->delete();
-
-            return response()->json(['message' => 'Logout successful'], 200);
-        }
-
-        return response()->json(['message' => 'User not authenticated'], 401);
+        return response()->json(['message' => 'Logout successful'], 200);
     }
 }

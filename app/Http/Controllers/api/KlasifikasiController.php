@@ -63,6 +63,34 @@ class KlasifikasiController extends Controller
     }
   }
 
+  public function search(Request $request)
+  {
+    // Validasi agar query tidak kosong
+    $request->validate([
+      'q' => 'required|string|min:1'
+    ]);
+
+    // Ambil parameter 'q' dari query string
+    $query = $request->input('q');
+
+    // Lakukan pencarian dengan query (case-insensitive)
+    $results = Klasifikasi::where('nama_klasifikasi', 'LIKE', '%' . $query . '%')
+      ->orWhere('nama_klasifikasi', 'LIKE', '%' . strtolower($query) . '%') // Antisipasi lowercase
+      ->orWhere('nama_klasifikasi', 'LIKE', '%' . ucfirst($query) . '%') // Antisipasi titlecase
+      ->with('subKlasifikasis.sbuCode') // Sertakan relasi
+      ->paginate(10);  // Batasi hasil per halaman dengan pagination
+
+    // Cek jika tidak ada hasil ditemukan
+    if ($results->isEmpty()) {
+      return response()->json([
+        'message' => 'Tidak ditemukan klasifikasi dengan kata kunci tersebut.'
+      ], 404);
+    }
+
+    // Kembalikan hasil dengan status 200
+    return response()->json($results, 200);
+  }
+
 
   // Menampilkan detail klasifikasi berdasarkan ID
   public function show($id)

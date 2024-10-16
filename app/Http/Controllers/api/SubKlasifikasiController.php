@@ -23,16 +23,14 @@ class SubKlasifikasiController extends Controller
     $validated = $request->validate([
       'nama' => 'required|string|max:255',
       'sbu_code' => 'required|string|max:10',
-      'kbli' => 'required|string|max:10',
     ]);
 
     $validated['klasifikasi_id'] = $klasifikasiId;
-
     $subKlasifikasi = SubKlasifikasi::create($validated);
-
     return response()->json([
       'success' => true,
       'data' => $subKlasifikasi,
+      'message' => 'Sub Klasifikasi berhasil ditambahkan.',
     ], 201);
   }
 
@@ -55,7 +53,6 @@ class SubKlasifikasiController extends Controller
     $validated = $request->validate([
       'nama' => 'sometimes|required|string|max:255',
       'sbu_code' => 'sometimes|required|string|max:10',
-      'kbli' => 'sometimes|required|string|max:10',
     ]);
 
     $subKlasifikasi->update($validated);
@@ -63,6 +60,7 @@ class SubKlasifikasiController extends Controller
     return response()->json([
       'success' => true,
       'data' => $subKlasifikasi,
+      'message' => 'Sub Klasifikasi berhasil diperbarui.',
     ]);
   }
 
@@ -75,7 +73,7 @@ class SubKlasifikasiController extends Controller
 
     return response()->json([
       'success' => true,
-      'message' => 'Sub Klasifikasi berhasil dihapus',
+      'message' => 'Sub Klasifikasi berhasil dihapus.',
     ]);
   }
 }

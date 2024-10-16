@@ -3,7 +3,6 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\SbuCodeController;
 use App\Http\Controllers\Api\KlasifikasiController;
 use App\Http\Controllers\Api\SubKlasifikasiController;
 
@@ -30,12 +29,4 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('klasifikasis/{id}', [KlasifikasiController::class, 'show']);
     Route::put('klasifikasis/{id}', [KlasifikasiController::class, 'update']);
     Route::delete('klasifikasis/{id}', [KlasifikasiController::class, 'destroy']);
-
-    // **SBU Code Routes**
-    Route::get('sbu-codes', [SbuCodeController::class, 'index']); // Semua SBU Codes
-    Route::post('sbu-codes', [SbuCodeController::class, 'store']); // Tambah SBU Code baru
-    Route::get('sbu-codes/{id}', [SbuCodeController::class, 'show']); // Detail SBU Code
-    Route::put('sbu-codes/{id}', [SbuCodeController::class, 'update']); // Update SBU Code
-    Route::delete('sbu-codes/{id}', [SbuCodeController::class, 'destroy']); // Hapus SBU Code
-    Route::get('sbu-codes/search', [SbuCodeController::class, 'search']); // Pencarian SBU Code
 });

@@ -3,60 +3,79 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\SubKlasifikasi;
 use Illuminate\Http\Request;
+use App\Models\SubKlasifikasi;
 
 class SubKlasifikasiController extends Controller
 {
-  public function index()
+  public function index($klasifikasiId)
   {
-    return SubKlasifikasi::with('klasifikasi')->get();
+    $subKlasifikasis = SubKlasifikasi::where('klasifikasi_id', $klasifikasiId)->get();
+
+    return response()->json([
+      'success' => true,
+      'data' => $subKlasifikasis,
+    ]);
   }
 
-  public function store(Request $request)
+  public function store(Request $request, $klasifikasiId)
   {
-    $request->validate([
-      'klasifikasi_id' => 'required|exists:klasifikasis,id',
-      'nama_sub_klasifikasi' => 'required|string|unique:sub_klasifikasis'
+    $validated = $request->validate([
+      'nama' => 'required|string|max:255',
+      'sbu_code' => 'required|string|max:10',
+      'kbli' => 'required|string|max:10',
     ]);
 
-    $subKlasifikasi = SubKlasifikasi::create($request->all());
+    $validated['klasifikasi_id'] = $klasifikasiId;
 
-    return response()->json($subKlasifikasi, 201);
+    $subKlasifikasi = SubKlasifikasi::create($validated);
+
+    return response()->json([
+      'success' => true,
+      'data' => $subKlasifikasi,
+    ], 201);
   }
 
-  public function search(Request $request)
+  public function show($klasifikasiId, $subKlasifikasiId)
   {
-    $query = $request->input('q');  // Ambil parameter 'q' dari query string
+    $subKlasifikasi = SubKlasifikasi::where('klasifikasi_id', $klasifikasiId)
+      ->findOrFail($subKlasifikasiId);
 
-    $results = SubKlasifikasi::where('nama_sub_klasifikasi', 'LIKE', '%' . $query . '%')->get();
-
-    if ($results->isEmpty()) {
-      return response()->json(['message' => 'Tidak ditemukan sub-klasifikasi dengan kata kunci tersebut.'], 404);
-    }
-
-    return response()->json($results, 200);
-  }
-  public function show($id)
-  {
-    return SubKlasifikasi::with('klasifikasi')->findOrFail($id);
+    return response()->json([
+      'success' => true,
+      'data' => $subKlasifikasi,
+    ]);
   }
 
-  public function update(Request $request, $id)
+  public function update(Request $request, $klasifikasiId, $subKlasifikasiId)
   {
-    $request->validate([
-      'nama_sub_klasifikasi' => 'required|string|unique:sub_klasifikasis,nama_sub_klasifikasi,' . $id
+    $subKlasifikasi = SubKlasifikasi::where('klasifikasi_id', $klasifikasiId)
+      ->findOrFail($subKlasifikasiId);
+
+    $validated = $request->validate([
+      'nama' => 'sometimes|required|string|max:255',
+      'sbu_code' => 'sometimes|required|string|max:10',
+      'kbli' => 'sometimes|required|string|max:10',
     ]);
 
-    $subKlasifikasi = SubKlasifikasi::findOrFail($id);
-    $subKlasifikasi->update($request->all());
+    $subKlasifikasi->update($validated);
 
-    return response()->json($subKlasifikasi, 200);
+    return response()->json([
+      'success' => true,
+      'data' => $subKlasifikasi,
+    ]);
   }
 
-  public function destroy($id)
+  public function destroy($klasifikasiId, $subKlasifikasiId)
   {
-    SubKlasifikasi::destroy($id);
-    return response()->json(null, 204);
+    $subKlasifikasi = SubKlasifikasi::where('klasifikasi_id', $klasifikasiId)
+      ->findOrFail($subKlasifikasiId);
+
+    $subKlasifikasi->delete();
+
+    return response()->json([
+      'success' => true,
+      'message' => 'Sub Klasifikasi berhasil dihapus',
+    ]);
   }
 }

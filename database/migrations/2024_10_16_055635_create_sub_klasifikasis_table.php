@@ -4,20 +4,27 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateSubKlasifikasisTable extends Migration
+return new class extends Migration
 {
+    /**
+     * Run the migrations.
+     */
     public function up()
     {
         Schema::create('sub_klasifikasis', function (Blueprint $table) {
             $table->id();
+            $table->string('nama');
             $table->foreignId('klasifikasi_id')->constrained('klasifikasis')->onDelete('cascade');
-            $table->string('nama_sub_klasifikasi');
             $table->timestamps();
         });
     }
 
-    public function down()
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
     {
         Schema::dropIfExists('sub_klasifikasis');
     }
-}
+};

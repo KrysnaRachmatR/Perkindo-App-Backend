@@ -6,9 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class SbuCode extends Model
 {
-    protected $fillable = ['sub_klasifikasi_id', 'kode_sbu', 'kbli'];
+    protected $fillable = ['kode', 'sub_klasifikasi_id'];
 
-    // Relasi: Kode SBU dimiliki oleh satu Sub Klasifikasi
     public function subKlasifikasi()
     {
         return $this->belongsTo(SubKlasifikasi::class);

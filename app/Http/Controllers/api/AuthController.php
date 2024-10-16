@@ -52,10 +52,10 @@ class AuthController extends Controller
             'password' => 'required|string|min:8',
         ]);
 
-        // Cek apakah email milik admin
+        // Login sebagai Admin
         $admin = Admin::where('email', $credentials['email'])->first();
         if ($admin && Hash::check($credentials['password'], $admin->password)) {
-            $token = $admin->createToken('Admin Token', ['admin'])->plainTextToken;
+            $token = $admin->createToken('Admin Token', ['admin:access'])->plainTextToken;
 
             return response()->json([
                 'message' => 'Login as admin successful',
@@ -64,10 +64,10 @@ class AuthController extends Controller
             ], 200);
         }
 
-        // Jika bukan admin, cek apakah email milik anggota
+        // Login sebagai Member
         $member = Member::where('email', $credentials['email'])->first();
         if ($member && Hash::check($credentials['password'], $member->password)) {
-            $token = $member->createToken('Member Token', ['member'])->plainTextToken;
+            $token = $member->createToken('Member Token', ['member:access'])->plainTextToken;
 
             return response()->json([
                 'message' => 'Login as member successful',
@@ -76,13 +76,13 @@ class AuthController extends Controller
             ], 200);
         }
 
-        // Jika tidak cocok, kembalikan pesan error
+        // Jika tidak cocok, kembalikan error
         return response()->json(['message' => 'Invalid credentials'], 401);
     }
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $request->user()->tokens()->delete(); // Hapus semua token milik user
 
         return response()->json(['message' => 'Logout successful'], 200);
     }

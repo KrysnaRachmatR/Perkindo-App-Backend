@@ -3,170 +3,113 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Klasifikasi;
-use App\Models\SubKlasifikasi;
-use App\Models\SbuCode;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use App\Models\Klasifikasi;
 
 class KlasifikasiController extends Controller
 {
+  // Menampilkan semua klasifikasi beserta sub klasifikasi dan kodenya
+  public function indexWithSubKlasifikasiAndCodes()
+  {
+    // Mengambil semua klasifikasi beserta sub klasifikasi
+    $klasifikasis = Klasifikasi::with('subKlasifikasis')->get();
+
+    return response()->json([
+      'success' => true,
+      'data' => $klasifikasis,
+    ], 200);
+  }
+
   // Menampilkan semua klasifikasi
   public function index()
   {
-    return Klasifikasi::all();
+    $klasifikasis = Klasifikasi::all();
+
+    return response()->json([
+      'success' => true,
+      'data' => $klasifikasis,
+    ], 200);
   }
 
   // Menambahkan klasifikasi baru
   public function storeWithDetails(Request $request)
   {
-    $request->validate([
-      'nama_klasifikasi' => 'required|string|unique:klasifikasis,nama_klasifikasi',
-      'sub_klasifikasis' => 'required|array',
-      'sub_klasifikasis.*.nama_sub_klasifikasi' => 'required|string',
-      'sub_klasifikasis.*.kode_sbu' => 'required|string|unique:sbu_codes,kode_sbu',
-      'sub_klasifikasis.*.kbli' => 'required|string',
+    $validated = $request->validate([
+      'nama' => 'required|string|max:255',
     ]);
 
-    DB::beginTransaction();
-    try {
-      // Buat Klasifikasi baru
-      $klasifikasi = Klasifikasi::create([
-        'nama_klasifikasi' => $request->nama_klasifikasi,
-      ]);
+    $klasifikasi = Klasifikasi::create($validated);
 
-      // Iterasi untuk menambahkan Sub Klasifikasi beserta Kode SBU
-      foreach ($request->sub_klasifikasis as $sub) {
-        $subKlasifikasi = SubKlasifikasi::create([
-          'klasifikasi_id' => $klasifikasi->id,
-          'nama_sub_klasifikasi' => $sub['nama_sub_klasifikasi'],
-        ]);
-
-        SbuCode::create([
-          'sub_klasifikasi_id' => $subKlasifikasi->id,
-          'kode_sbu' => $sub['kode_sbu'],
-          'kbli' => $sub['kbli'],
-        ]);
-      }
-
-      DB::commit();
-      return response()->json([
-        'message' => 'Klasifikasi, Sub Klasifikasi, dan Kode SBU berhasil ditambahkan.',
-        'klasifikasi' => $klasifikasi->load('subKlasifikasis.sbuCode'),
-      ], 201);
-    } catch (\Exception $e) {
-      DB::rollBack();
-      return response()->json([
-        'message' => 'Gagal menambahkan klasifikasi.',
-        'error' => $e->getMessage(),
-      ], 500);
-    }
+    return response()->json([
+      'success' => true,
+      'data' => $klasifikasi,
+    ], 201);
   }
-
-  public function search(Request $request)
-  {
-    // Validasi agar query tidak kosong
-    $request->validate([
-      'q' => 'required|string|min:1'
-    ]);
-
-    // Ambil parameter 'q' dari query string
-    $query = $request->input('q');
-
-    // Lakukan pencarian dengan query (case-insensitive)
-    $results = Klasifikasi::where('nama_klasifikasi', 'LIKE', '%' . $query . '%')
-      ->orWhere('nama_klasifikasi', 'LIKE', '%' . strtolower($query) . '%') // Antisipasi lowercase
-      ->orWhere('nama_klasifikasi', 'LIKE', '%' . ucfirst($query) . '%') // Antisipasi titlecase
-      ->with('subKlasifikasis.sbuCode') // Sertakan relasi
-      ->paginate(10);  // Batasi hasil per halaman dengan pagination
-
-    // Cek jika tidak ada hasil ditemukan
-    if ($results->isEmpty()) {
-      return response()->json([
-        'message' => 'Tidak ditemukan klasifikasi dengan kata kunci tersebut.'
-      ], 404);
-    }
-
-    // Kembalikan hasil dengan status 200
-    return response()->json($results, 200);
-  }
-
 
   // Menampilkan detail klasifikasi berdasarkan ID
   public function show($id)
   {
-    return Klasifikasi::findOrFail($id);
+    $klasifikasi = Klasifikasi::with('subKlasifikasis')->findOrFail($id);
+
+    return response()->json([
+      'success' => true,
+      'data' => $klasifikasi,
+    ]);
   }
 
-  // Update klasifikasi
+  // Mengupdate klasifikasi berdasarkan ID
   public function update(Request $request, $id)
   {
-    $request->validate([
-      'nama_klasifikasi' => 'required|string|unique:klasifikasis,nama_klasifikasi,' . $id,
+    $klasifikasi = Klasifikasi::findOrFail($id);
+
+    $validated = $request->validate([
+      'nama' => 'sometimes|required|string|max:255',
     ]);
 
-    $klasifikasi = Klasifikasi::findOrFail($id);
-    $klasifikasi->update($request->all());
+    $klasifikasi->update($validated);
 
-    return response()->json($klasifikasi, 200);
+    return response()->json([
+      'success' => true,
+      'data' => $klasifikasi,
+    ]);
   }
 
-  // Hapus klasifikasi berdasarkan ID
+  // Menghapus klasifikasi berdasarkan ID
   public function destroy($id)
   {
     Klasifikasi::destroy($id);
-    return response()->json(null, 204);
+
+    return response()->json([
+      'success' => true,
+      'message' => 'Klasifikasi berhasil dihapus',
+    ]);
   }
 
-  // Menambahkan sub klasifikasi dengan kode SBU dan KBLI
-  public function addSubKlasifikasiWithSbu(Request $request, $klasifikasiId)
+  // Menambahkan sub klasifikasi ke klasifikasi yang ada
+  public function addSubKlasifikasiWithSbu(Request $request, $id)
   {
-    $request->validate([
-      'nama_sub_klasifikasi' => 'required|string|max:255',
-      'kode_sbu' => 'required|string|unique:sbu_codes,kode_sbu',
-      'kbli' => 'required|string|max:10',
+    $validated = $request->validate([
+      'nama' => 'required|string|max:255',
+      'sbu_code' => 'required|string|max:255', // Validasi untuk sbu_code
     ]);
 
-    DB::beginTransaction();
+    $klasifikasi = Klasifikasi::findOrFail($id);
+    $subKlasifikasi = $klasifikasi->subKlasifikasis()->create($validated);
 
-    try {
-      // Pastikan klasifikasi ditemukan
-      $klasifikasi = Klasifikasi::findOrFail($klasifikasiId);
-
-      // Buat sub klasifikasi baru
-      $subKlasifikasi = SubKlasifikasi::create([
-        'klasifikasi_id' => $klasifikasi->id,
-        'nama_sub_klasifikasi' => $request->nama_sub_klasifikasi,
-      ]);
-
-      // Tambahkan kode SBU dan KBLI untuk sub klasifikasi tersebut
-      $sbuCode = SbuCode::create([
-        'sub_klasifikasi_id' => $subKlasifikasi->id,
-        'kode_sbu' => $request->kode_sbu,
-        'kbli' => $request->kbli,
-      ]);
-
-      DB::commit();
-
-      return response()->json([
-        'message' => 'Sub Klasifikasi dan Kode SBU berhasil ditambahkan.',
-        'sub_klasifikasi' => $subKlasifikasi,
-        'sbu_code' => $sbuCode,
-      ], 201);
-    } catch (\Exception $e) {
-      DB::rollBack();
-
-      return response()->json([
-        'message' => 'Gagal menambahkan sub klasifikasi dan kode SBU.',
-        'error' => $e->getMessage(),
-      ], 500);
-    }
+    return response()->json([
+      'success' => true,
+      'data' => $subKlasifikasi,
+    ], 201);
   }
 
-  public function klasifikasiWithDetails()
+  // Menampilkan sub klasifikasi dari klasifikasi berdasarkan ID
+  public function getSubKlasifikasis($id)
   {
-    $data = Klasifikasi::with(['subKlasifikasis.sbuCode'])->get();
+    $klasifikasi = Klasifikasi::with('subKlasifikasis')->findOrFail($id);
 
-    return response()->json($data, 200);
+    return response()->json([
+      'success' => true,
+      'data' => $klasifikasi->subKlasifikasis,
+    ]);
   }
 }

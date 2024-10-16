@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Klasifikasi extends Model
 {
-    protected $fillable = ['nama_klasifikasi'];
+    use HasFactory;
 
-    // Relasi: Klasifikasi memiliki banyak Sub Klasifikasi
+    protected $fillable = ['nama'];
+
     public function subKlasifikasis()
     {
         return $this->hasMany(SubKlasifikasi::class);

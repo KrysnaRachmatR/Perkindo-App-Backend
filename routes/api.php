@@ -2,11 +2,15 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\KotaKabupatenController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\KlasifikasiController;
+use App\Http\Controllers\Api\KtaController;
 use App\Http\Controllers\Api\SubKlasifikasiController;
 use App\Http\Controllers\Api\NonKonstruksiKlasifikasiController;
 use App\Http\Controllers\Api\NonKonstruksiSubKlasifikasiController;
+
+Route::get('/kota-kabupaten', [KotaKabupatenController::class, 'index']);
 
 // Route Auth (Login & Register)
 Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -16,6 +20,14 @@ Route::post('/register', [AuthController::class, 'register'])->name('register');
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     // Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    //Validasi KTA
+    Route::post('kta', [KtaController::class, 'store']);
+    Route::put('kta/{id}', [KtaController::class, 'update']);
+    Route::post('kta/{id}/extend', [KtaController::class, 'extend']);
+    Route::put('kta/{id}/approve', [KtaController::class, 'approveExtension']);
+    Route::put('kta/{id}/reject', [KtaController::class, 'rejectExtension']);
+    Route::get('kta', [KtaController::class, 'index']);
 
     // Sub Klasifikasi Routes
     Route::get('klasifikasis/{klasifikasiId}/sub-klasifikasis', [SubKlasifikasiController::class, 'index']);
@@ -45,4 +57,11 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('non-konstruksi/klasifikasis/{klasifikasiId}/sub-klasifikasis/{subKlasifikasiId}', [NonKonstruksiSubKlasifikasiController::class, 'show']);
     Route::put('non-konstruksi/klasifikasis/{klasifikasiId}/sub-klasifikasis/{subKlasifikasiId}', [NonKonstruksiSubKlasifikasiController::class, 'update']);
     Route::delete('non-konstruksi/klasifikasis/{klasifikasiId}/sub-klasifikasis/{subKlasifikasiId}', [NonKonstruksiSubKlasifikasiController::class, 'destroy']);
+});
+
+
+Route::middleware(['auth:sanctum', 'user'])->group(function () {
+    Route::post('/kta', [KtaController::class, 'store'])->name('kta.store');
+    Route::put('/{kta}', [KtaController::class, 'update'])->name('kta.update');
+    Route::post('kta/{id}/extend', [KtaController::class, 'extend']);
 });

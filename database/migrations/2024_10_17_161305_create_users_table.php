@@ -4,24 +4,30 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateMembersTable extends Migration
+return new class extends Migration
 {
+    /**
+     * Run the migrations.
+     */
     public function up()
     {
-        Schema::create('members', function (Blueprint $table) {
+        Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('nama_perusahaan');
             $table->string('nama_direktur');
             $table->string('nama_penanggung_jawab');
-            $table->string('alamat_perusahaan');
+            $table->text('alamat_perusahaan');
             $table->string('email')->unique();
             $table->string('password');
             $table->timestamps();
         });
     }
 
-    public function down()
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
     {
-        Schema::dropIfExists('members');
+        Schema::dropIfExists('users');
     }
-}
+};

@@ -9,12 +9,15 @@ use App\Http\Controllers\Api\KtaController;
 use App\Http\Controllers\Api\SubKlasifikasiController;
 use App\Http\Controllers\Api\NonKonstruksiKlasifikasiController;
 use App\Http\Controllers\Api\NonKonstruksiSubKlasifikasiController;
+use App\Http\Controllers\Api\InstagramController;
 
 Route::get('/kota-kabupaten', [KotaKabupatenController::class, 'index']);
 
 // Route Auth (Login & Register)
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/register', [AuthController::class, 'register'])->name('register');
+Route::get('/instagram/media', [InstagramController::class, 'getMedia']);
+Route::post('/instagram/refresh', [InstagramController::class, 'serviceRefresh']);
 
 // Middleware untuk Admin Only
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {

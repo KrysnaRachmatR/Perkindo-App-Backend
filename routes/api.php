@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\SubKlasifikasiController;
 use App\Http\Controllers\Api\NonKonstruksiKlasifikasiController;
 use App\Http\Controllers\Api\NonKonstruksiSubKlasifikasiController;
 use App\Http\Controllers\Api\InstagramController;
+use App\Http\Controllers\Api\AgendaController;
 
 Route::get('/kota-kabupaten', [KotaKabupatenController::class, 'index']);
 
@@ -60,6 +61,12 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('non-konstruksi/klasifikasis/{klasifikasiId}/sub-klasifikasis/{subKlasifikasiId}', [NonKonstruksiSubKlasifikasiController::class, 'show']);
     Route::put('non-konstruksi/klasifikasis/{klasifikasiId}/sub-klasifikasis/{subKlasifikasiId}', [NonKonstruksiSubKlasifikasiController::class, 'update']);
     Route::delete('non-konstruksi/klasifikasis/{klasifikasiId}/sub-klasifikasis/{subKlasifikasiId}', [NonKonstruksiSubKlasifikasiController::class, 'destroy']);
+
+    Route::get('/agendas', [AgendaController::class, 'index']); // Menampilkan semua agenda
+    Route::post('/agendas', [AgendaController::class, 'store']); // Menambah agenda
+    Route::get('/agendas/{id}', [AgendaController::class, 'show']); // Menampilkan agenda berdasarkan ID
+    Route::put('/agendas/{id}', [AgendaController::class, 'update']); // Memperbarui agenda
+    Route::delete('/agendas/{id}', [AgendaController::class, 'destroy']); // Menghapus agenda
 });
 
 

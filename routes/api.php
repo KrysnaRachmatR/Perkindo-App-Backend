@@ -31,12 +31,9 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     //Validasi KTA
-    Route::post('kta', [KtaController::class, 'store']);
-    Route::put('kta/{id}', [KtaController::class, 'update']);
-    Route::post('kta/{id}/extend', [KtaController::class, 'extend']);
-    Route::put('kta/{id}/approve', [KtaController::class, 'approveExtension']);
-    Route::put('kta/{id}/reject', [KtaController::class, 'rejectExtension']);
-    Route::get('kta', [KtaController::class, 'index']);
+    Route::get('/kta', [KtaController::class, 'index']); // Menampilkan semua pengajuan KTA
+    Route::get('/kta/{kta}', [KtaController::class, 'show']);
+    Route::put('/kta/{kta}', [KtaController::class, 'update']);
 
     //Validasi SBU Konstruksi
     Route::get('sbu-konstruksi', [SbusRegistrationController::class, 'index']);
@@ -90,8 +87,8 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
 
 Route::middleware(['auth:sanctum', 'user'])->group(function () {
-    Route::post('/kta', [KtaController::class, 'store']);
-    Route::post('kta/{id}/extend', [KtaController::class, 'extend']);
+    Route::post('/kta', [KtaController::class, 'store']); // Mengajukan KTA
+    Route::put('/kta/{kta}/extend', [KtaController::class, 'extend']); // Mengajukan perpanjangan KTA
 
     Route::post('/sbu-konstruksi', [SbusRegistrationController::class, 'store']);
     Route::get('/sbu-konstruksi', [SbusRegistrationController::class, 'index']);

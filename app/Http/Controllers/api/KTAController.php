@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\KTA;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -78,18 +77,30 @@ class KtaController extends Controller
   {
     // Validasi input untuk update
     $request->validate([
-      'status_perpanjangan_kta' => 'required|in:active,inactive,pending,rejected',
+      'status' => 'nullable|in:accepted,rejected', // Untuk status KTA
+      'status_perpanjangan_kta' => 'nullable|in:active,inactive,pending,rejected', // Untuk perpanjangan KTA
       'komentar' => 'nullable|string',
     ]);
 
-    // Update status dan tanggal diterima jika diterima
-    if ($request->status_perpanjangan_kta == 'active') {
-      $kta->tanggal_diterima = now(); // Set tanggal diterima saat status menjadi aktif
-    } elseif ($request->status_perpanjangan_kta == 'rejected') {
-      $kta->komentar = $request->komentar; // Simpan komentar jika ditolak
+    // Update status KTA jika diberikan
+    if ($request->has('status')) {
+      // Set tanggal diterima saat status menjadi aktif
+      if ($request->status == 'active') {
+        $kta->tanggal_diterima = now(); // Set tanggal diterima
+      }
+      $kta->status = $request->status; // Update status KTA
     }
 
-    $kta->status_perpanjangan_kta = $request->status_perpanjangan_kta;
+    // Update status perpanjangan KTA jika diberikan
+    if ($request->has('status_perpanjangan_kta')) {
+      if ($request->status_perpanjangan_kta == 'rejected') {
+        // Simpan komentar jika ditolak
+        $kta->komentar = $request->komentar;
+      }
+      $kta->status_perpanjangan_kta = $request->status_perpanjangan_kta; // Update status perpanjangan KTA
+    }
+
+    // Simpan perubahan ke database
     $kta->save();
 
     return response()->json([
@@ -97,6 +108,7 @@ class KtaController extends Controller
       'kta' => $kta,
     ]);
   }
+
 
   // Metode untuk mengajukan perpanjangan KTA
   public function extend(Request $request, $id)
@@ -120,5 +132,58 @@ class KtaController extends Controller
     $kta->save();
 
     return response()->json(['message' => 'Perpanjangan KTA diajukan.']);
+  }
+
+  // Metode untuk menampilkan semua pengajuan KTA untuk admin
+  public function index()
+  {
+    $ktas = KTA::with('user')->get(); // Menampilkan semua KTA dengan relasi user
+    return response()->json($ktas);
+  }
+
+  // Metode untuk menampilkan detail KTA tertentu
+  public function show($id)
+  {
+    // Temukan KTA berdasarkan ID dan muat relasi 'user'
+    $kta = KTA::with('user')->findOrFail($id);
+
+    // Ambil data pengguna yang mengajukan KTA
+    $user = $kta->user;
+
+    // Siapkan data untuk ditampilkan
+    $response = [
+      'kta' => [
+        'id' => $kta->id,
+        'tanggal_diterima' => $kta->tanggal_diterima,
+        'status_perpanjangan_kta' => $kta->status_perpanjangan_kta,
+        'formulir_permohonan' => $kta->formulir_permohonan,
+        'pernyataan_kebenaran' => $kta->pernyataan_kebenaran,
+        'pengesahan_menkumham' => $kta->pengesahan_menkumham,
+        'akta_pendirian' => $kta->akta_pendirian,
+        'akta_perubahan' => $kta->akta_perubahan,
+        'npwp_perusahaan' => $kta->npwp_perusahaan,
+        'surat_domisili' => $kta->surat_domisili,
+        'ktp_pengurus' => $kta->ktp_pengurus,
+        'logo' => $kta->logo,
+        'foto_direktur' => $kta->foto_direktur,
+        'npwp_pengurus_akta' => $kta->npwp_pengurus_akta,
+        'bukti_transfer' => $kta->bukti_transfer,
+        'kabupaten_id' => $kta->kabupaten_id,
+        'tanggal_pengajuan' => $kta->created_at,
+        'updated_at' => $kta->updated_at,
+      ],
+      'user' => [
+        'id' => $user->id,
+        'nama_perusahaan' => $user->nama_perusahaan,
+        'nama_direktur' => $user->nama_direktur,
+        'email' => $user->email,
+        'no_telp' => $user->no_telp, // Contoh field tambahan
+        'alamat' => $user->alamat, // Contoh field tambahan
+        'tanggal_pengajuan' => $kta->created_at,
+        // Tambahkan informasi lain yang ingin ditampilkan
+      ],
+    ];
+
+    return response()->json($response);
   }
 }

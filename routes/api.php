@@ -11,6 +11,8 @@ use App\Http\Controllers\Api\NonKonstruksiKlasifikasiController;
 use App\Http\Controllers\Api\NonKonstruksiSubKlasifikasiController;
 use App\Http\Controllers\Api\InstagramController;
 use App\Http\Controllers\Api\AgendaController;
+use App\Http\Controllers\Api\BeritaController;
+use App\Http\Controllers\Api\KomentarController;
 
 Route::get('/kota-kabupaten', [KotaKabupatenController::class, 'index']);
 
@@ -19,6 +21,8 @@ Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/register', [AuthController::class, 'register'])->name('register');
 Route::get('/instagram/media', [InstagramController::class, 'getMedia']);
 Route::post('/instagram/refresh', [InstagramController::class, 'serviceRefresh']);
+Route::post('/berita/{berita_id}/komentar', [KomentarController::class, 'store']);
+Route::get('/berita/{berita_id}/komentar', [KomentarController::class, 'index']);
 
 // Middleware untuk Admin Only
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
@@ -62,11 +66,19 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::put('non-konstruksi/klasifikasis/{klasifikasiId}/sub-klasifikasis/{subKlasifikasiId}', [NonKonstruksiSubKlasifikasiController::class, 'update']);
     Route::delete('non-konstruksi/klasifikasis/{klasifikasiId}/sub-klasifikasis/{subKlasifikasiId}', [NonKonstruksiSubKlasifikasiController::class, 'destroy']);
 
+    // Route Agenda
     Route::get('/agendas', [AgendaController::class, 'index']); // Menampilkan semua agenda
     Route::post('/agendas', [AgendaController::class, 'store']); // Menambah agenda
     Route::get('/agendas/{id}', [AgendaController::class, 'show']); // Menampilkan agenda berdasarkan ID
     Route::put('/agendas/{id}', [AgendaController::class, 'update']); // Memperbarui agenda
     Route::delete('/agendas/{id}', [AgendaController::class, 'destroy']); // Menghapus agenda
+
+    // Route Berita
+    Route::get('/beritas', [BeritaController::class, 'index']); // Menampilkan semua berita
+    Route::post('/beritas', [BeritaController::class, 'store']); // Menambahkan berita
+    Route::get('/beritas/{id}', [BeritaController::class, 'show']); // Menampilkan berita berdasarkan ID
+    Route::delete('/beritas/{id}', [BeritaController::class, 'destroy']); // Menghapus berita
+    Route::get('/berita/{berita_id}/komentar', [KomentarController::class, 'index']);
 });
 
 

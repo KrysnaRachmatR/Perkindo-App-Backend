@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\InstagramController;
 use App\Http\Controllers\Api\AgendaController;
 use App\Http\Controllers\Api\BeritaController;
 use App\Http\Controllers\Api\KomentarController;
+use App\Http\Controllers\Api\SbusRegistrationController;
 
 Route::get('/kota-kabupaten', [KotaKabupatenController::class, 'index']);
 
@@ -36,6 +37,12 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::put('kta/{id}/approve', [KtaController::class, 'approveExtension']);
     Route::put('kta/{id}/reject', [KtaController::class, 'rejectExtension']);
     Route::get('kta', [KtaController::class, 'index']);
+
+    //Validasi SBU Konstruksi
+    Route::get('sbu-konstruksi', [SbusRegistrationController::class, 'index']);
+    Route::get('sbu-konstruksi/{id}', [SbusRegistrationController::class, 'show']);
+    Route::put('sbu-konstruksi/{id}', [SbusRegistrationController::class, 'update']);
+    Route::delete('sbu-konstruksi/{id}', [SbusRegistrationController::class, 'destroy']);
 
     // Sub Klasifikasi Routes
     Route::get('klasifikasis/{klasifikasiId}/sub-klasifikasis', [SubKlasifikasiController::class, 'index']);
@@ -86,4 +93,8 @@ Route::middleware(['auth:sanctum', 'user'])->group(function () {
     Route::post('/kta', [KtaController::class, 'store'])->name('kta.store');
     Route::put('/{kta}', [KtaController::class, 'update'])->name('kta.update');
     Route::post('kta/{id}/extend', [KtaController::class, 'extend']);
+
+    Route::post('/sbu-konstruksi', [SbusRegistrationController::class, 'store']);
+    Route::get('/sbu-konstruksi', [SbusRegistrationController::class, 'index']);
+    Route::get('/sbu-konstruksi/{id}', [SbusRegistrationController::class, 'show']);
 });

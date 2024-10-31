@@ -15,4 +15,9 @@ class Klasifikasi extends Model
     {
         return $this->hasMany(SubKlasifikasi::class);
     }
+
+    public function sbusRegistrations()
+    {
+        return $this->hasMany(SbusRegistration::class);
+    }
 }

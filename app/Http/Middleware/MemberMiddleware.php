@@ -9,7 +9,7 @@ class MemberMiddleware
 {
   public function handle(Request $request, Closure $next)
   {
-    if (!$request->user()->tokenCan('member:access')) {
+    if (!$request->user()->tokenCan('user:access')) {
       return response()->json(['message' => 'Unauthorized - Member Only'], 403);
     }
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\KTA;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -53,17 +54,23 @@ class KtaController extends Controller
     }
 
     // Buat KTA baru
-    $kta = KTA::create(array_merge($paths, [
-      'kabupaten_id' => $request->kabupaten_id,
-      'user_id' => Auth::id(),
-      'status_perpanjangan_kta' => 'pending', // Status awal
-      'tanggal_diterima' => null, // Belum ada tanggal diterima saat dibuat
-    ]));
+    try {
+      $kta = KTA::create(array_merge($paths, [
+        'kabupaten_id' => $request->kabupaten_id,
+        'user_id' => Auth::id(),
+        'status_perpanjangan_kta' => 'pending', // Status awal
+        'tanggal_diterima' => null, // Belum ada tanggal diterima saat dibuat
+      ]));
 
-    return response()->json([
-      'message' => 'KTA berhasil diajukan.',
-      'kta' => $kta,
-    ], 201);
+      return response()->json([
+        'message' => 'KTA berhasil diajukan.',
+        'kta' => $kta,
+      ], 201);
+    } catch (\Exception $e) {
+      return response()->json([
+        'message' => 'Gagal menyimpan KTA: ' . $e->getMessage(),
+      ], 500);
+    }
   }
 
   // Metode untuk memperbarui KTA

@@ -90,8 +90,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
 
 Route::middleware(['auth:sanctum', 'user'])->group(function () {
-    Route::post('/kta', [KtaController::class, 'store'])->name('kta.store');
-    Route::put('/{kta}', [KtaController::class, 'update'])->name('kta.update');
+    Route::post('/kta', [KtaController::class, 'store']);
     Route::post('kta/{id}/extend', [KtaController::class, 'extend']);
 
     Route::post('/sbu-konstruksi', [SbusRegistrationController::class, 'store']);

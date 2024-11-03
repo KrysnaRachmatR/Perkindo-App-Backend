@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 class KTA extends Model
 {
@@ -28,9 +29,10 @@ class KTA extends Model
         'bukti_transfer',
         'kabupaten_id',
         'user_id',
-        'status_perpanjangan_kta', // Tambahkan status perpanjangan KTA
-        'tanggal_diterima', // Tambahkan tanggal diterima
-        'komentar', // Tambahkan kolom komentar jika ditolak
+        'status', // Tambahkan status untuk pendaftaran KTA
+        'status_perpanjangan_kta', // Status untuk perpanjangan KTA
+        'tanggal_diterima', // Tanggal KTA diterima
+        'komentar', // Komentar jika perpanjangan ditolak
     ];
 
     // Relasi ke model KotaKabupaten
@@ -44,15 +46,37 @@ class KTA extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    // Method untuk memeriksa apakah KTA masih aktif atau sudah tidak aktif berdasarkan tanggal diterima
     public function isActive()
     {
-        return $this->status === 'active' && now()->lessThanOrEqualTo($this->tanggal_diterima->addYear());
+        if (!$this->tanggal_diterima) {
+            return false; // Jika belum diterima, dianggap tidak aktif
+        }
+        return now()->lessThanOrEqualTo(Carbon::parse($this->tanggal_diterima)->addYear());
     }
+
     // Method untuk memperpanjang KTA
     public function extendKta($buktiTransfer)
     {
         $this->status_perpanjangan_kta = 'pending'; // Status menjadi pending saat diajukan perpanjangan
         $this->bukti_transfer = $buktiTransfer; // Simpan bukti transfer
         $this->save(); // Simpan perubahan
+    }
+
+    // Method untuk mengatur KTA sebagai aktif dan menetapkan tanggal diterima
+    public function acceptKta()
+    {
+        $this->status = 'accepted';
+        $this->tanggal_diterima = now(); // Set tanggal diterima saat KTA diaktifkan
+        $this->save();
+    }
+
+    // Method untuk menolak KTA dengan komentar
+    public function rejectKta($komentar)
+    {
+        $this->status = 'rejected';
+        $this->komentar = $komentar; // Simpan komentar penolakan
+        $this->save();
     }
 }

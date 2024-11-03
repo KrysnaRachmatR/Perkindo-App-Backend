@@ -31,9 +31,13 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     //Validasi KTA
-    Route::get('/kta', [KtaController::class, 'index']); // Menampilkan semua pengajuan KTA
-    Route::get('/kta/{kta}', [KtaController::class, 'show']);
-    Route::put('/kta/{kta}', [KtaController::class, 'update']);
+    Route::get('/kta', [KtaController::class, 'index'])->name('admin.kta.index');
+    Route::get('/kta/{id}', [KtaController::class, 'show']);
+    Route::put('/kta/{kta}', [KtaController::class, 'update'])->name('admin.kta.update');
+    Route::get('/kta/perpanjangan', [KtaController::class, 'viewExtensions'])->name('admin.kta.perpanjangan');
+    Route::put('/kta/{kta}/extend/accept', [KtaController::class, 'update'])->name('admin.kta.extend.accept');
+    Route::put('/kta/{kta}/extend/reject', [KtaController::class, 'update'])->name('admin.kta.extend.reject');
+    Route::get('/kta/check-expiry', [KtaController::class, 'checkExpiry']);
 
     //Validasi SBU Konstruksi
     Route::get('sbu-konstruksi', [SbusRegistrationController::class, 'index']);
@@ -87,10 +91,10 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
 
 Route::middleware(['auth:sanctum', 'user'])->group(function () {
-    Route::post('/kta', [KtaController::class, 'store']); // Mengajukan KTA
-    Route::put('/kta/{kta}/extend', [KtaController::class, 'extend']); // Mengajukan perpanjangan KTA
 
-    Route::post('/sbu-konstruksi', [SbusRegistrationController::class, 'store']);
-    Route::get('/sbu-konstruksi', [SbusRegistrationController::class, 'index']);
-    Route::get('/sbu-konstruksi/{id}', [SbusRegistrationController::class, 'show']);
+    Route::post('/kta', [KtaController::class, 'store']);
+    Route::post('kta/submit', [KtaController::class, 'submitKta'])->name('user.kta.submit');
+    Route::get('kta/status', [KtaController::class, 'viewStatus'])->name('user.kta.status');
+    Route::post('kta/extend', [KtaController::class, 'extendKta'])->name('user.kta.extend');
+    Route::get('/kta/check-expiry', [KtaController::class, 'checkExpiry']);
 });

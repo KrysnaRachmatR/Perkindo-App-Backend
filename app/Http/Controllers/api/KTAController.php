@@ -6,101 +6,79 @@ use App\Http\Controllers\Controller;
 use App\Models\KTA;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
 
 class KtaController extends Controller
 {
   // Metode untuk menyimpan KTA baru
   public function store(Request $request)
   {
-    // Validasi input
+    // Validasi data KTA yang diajukan
     $request->validate([
-      'formulir_permohonan' => 'required|file|mimes:pdf,jpg,jpeg,png',
-      'pernyataan_kebenaran' => 'required|file|mimes:pdf,jpg,jpeg,png',
-      'pengesahan_menkumham' => 'required|file|mimes:pdf,jpg,jpeg,png',
-      'akta_pendirian' => 'nullable|file|mimes:pdf,jpg,jpeg,png',
-      'akta_perubahan' => 'nullable|file|mimes:pdf,jpg,jpeg,png',
-      'npwp_perusahaan' => 'required|file|mimes:pdf,jpg,jpeg,png',
-      'surat_domisili' => 'required|file|mimes:pdf,jpg,jpeg,png',
-      'ktp_pengurus' => 'required|file|mimes:pdf,jpg,jpeg,png',
-      'logo' => 'nullable|file|mimes:jpg,jpeg,png',
-      'foto_direktur' => 'required|file|mimes:jpg,jpeg,png',
-      'npwp_pengurus_akta' => 'required|file|mimes:pdf,jpg,jpeg,png',
-      'bukti_transfer' => 'required|file|mimes:pdf,jpg,jpeg,png',
-      'kabupaten_id' => 'required|exists:kota_kabupaten,id',
+      'formulir_permohonan' => 'required|file',
+      'pernyataan_kebenaran' => 'required|file',
+      'pengesahan_menkumham' => 'required|file',
+      'akta_pendirian' => 'required|file',
+      'akta_perubahan' => 'nullable|file',
+      'npwp_perusahaan' => 'required|file',
+      'surat_domisili' => 'required|file',
+      'ktp_pengurus' => 'required|file',
+      'logo' => 'nullable|file',
+      'foto_direktur' => 'nullable|file',
+      'npwp_pengurus_akta' => 'required|file',
+      'bukti_transfer' => 'required|file',
+      'kabupaten_id' => 'required|integer',
     ]);
 
-    // Simpan dokumen dan dapatkan pathnya
-    $paths = [];
-    $files = [
-      'formulir_permohonan',
-      'pernyataan_kebenaran',
-      'pengesahan_menkumham',
-      'akta_pendirian',
-      'akta_perubahan',
-      'npwp_perusahaan',
-      'surat_domisili',
-      'ktp_pengurus',
-      'logo',
-      'foto_direktur',
-      'npwp_pengurus_akta',
-      'bukti_transfer'
-    ];
+    // Buat entri KTA baru dengan user_id dari token autentikasi
+    $kta = KTA::create([
+      'formulir_permohonan' => $request->file('formulir_permohonan')->store('documents'),
+      'pernyataan_kebenaran' => $request->file('pernyataan_kebenaran')->store('documents'),
+      'pengesahan_menkumham' => $request->file('pengesahan_menkumham')->store('documents'),
+      'akta_pendirian' => $request->file('akta_pendirian')->store('documents'),
+      'akta_perubahan' => $request->file('akta_perubahan') ? $request->file('akta_perubahan')->store('documents') : null,
+      'npwp_perusahaan' => $request->file('npwp_perusahaan')->store('documents'),
+      'surat_domisili' => $request->file('surat_domisili')->store('documents'),
+      'ktp_pengurus' => $request->file('ktp_pengurus')->store('documents'),
+      'logo' => $request->file('logo') ? $request->file('logo')->store('images') : null,
+      'foto_direktur' => $request->file('foto_direktur') ? $request->file('foto_direktur')->store('images') : null,
+      'npwp_pengurus_akta' => $request->file('npwp_pengurus_akta')->store('documents'),
+      'bukti_transfer' => $request->file('bukti_transfer')->store('payments'),
+      'kabupaten_id' => $request->kabupaten_id,
+      'user_id' => auth()->id(),
+    ]);
 
-    foreach ($files as $file) {
-      if ($request->hasFile($file)) {
-        $paths[$file] = $request->file($file)->store('uploads/kta', 'public');
-      }
-    }
-
-    // Buat KTA baru
-    try {
-      $kta = KTA::create(array_merge($paths, [
-        'kabupaten_id' => $request->kabupaten_id,
-        'user_id' => Auth::id(),
-        'status_perpanjangan_kta' => 'pending', // Status awal
-        'tanggal_diterima' => null, // Belum ada tanggal diterima saat dibuat
-      ]));
-
-      return response()->json([
-        'message' => 'KTA berhasil diajukan.',
-        'kta' => $kta,
-      ], 201);
-    } catch (\Exception $e) {
-      return response()->json([
-        'message' => 'Gagal menyimpan KTA: ' . $e->getMessage(),
-      ], 500);
-    }
+    return response()->json(['message' => 'Pengajuan KTA berhasil disubmit', 'kta' => $kta], 201);
   }
 
-  // Metode untuk memperbarui KTA
+
+  // Metode untuk memperbarui status KTA atau perpanjangan
   public function update(Request $request, KTA $kta)
   {
-    // Validasi input untuk update
     $request->validate([
-      'status' => 'nullable|in:accepted,rejected', // Untuk status KTA
-      'status_perpanjangan_kta' => 'nullable|in:active,inactive,pending,rejected', // Untuk perpanjangan KTA
+      'status' => 'nullable|in:accepted,rejected',
+      'status_perpanjangan_kta' => 'nullable|in:active,inactive,pending,rejected',
       'komentar' => 'nullable|string',
     ]);
 
-    // Update status KTA jika diberikan
+    // Update status KTA (pendaftaran) jika diberikan
     if ($request->has('status')) {
-      // Set tanggal diterima saat status menjadi aktif
-      if ($request->status == 'active') {
-        $kta->tanggal_diterima = now(); // Set tanggal diterima
+      $kta->status = $request->status;
+      if ($request->status == 'accepted') {
+        $kta->tanggal_diterima = now();
+      } elseif ($request->status == 'rejected') {
+        $kta->komentar = $request->komentar;
       }
-      $kta->status = $request->status; // Update status KTA
     }
 
     // Update status perpanjangan KTA jika diberikan
     if ($request->has('status_perpanjangan_kta')) {
+      $kta->status_perpanjangan_kta = $request->status_perpanjangan_kta;
       if ($request->status_perpanjangan_kta == 'rejected') {
-        // Simpan komentar jika ditolak
         $kta->komentar = $request->komentar;
       }
-      $kta->status_perpanjangan_kta = $request->status_perpanjangan_kta; // Update status perpanjangan KTA
     }
 
-    // Simpan perubahan ke database
     $kta->save();
 
     return response()->json([
@@ -108,7 +86,6 @@ class KtaController extends Controller
       'kta' => $kta,
     ]);
   }
-
 
   // Metode untuk mengajukan perpanjangan KTA
   public function extend(Request $request, $id)
@@ -119,71 +96,48 @@ class KtaController extends Controller
 
     $kta = KTA::findOrFail($id);
 
-    // Proses upload bukti transfer
     if ($request->hasFile('bukti_transfer')) {
       $file = $request->file('bukti_transfer');
       $filename = time() . '.' . $file->getClientOriginalExtension();
       $file->storeAs('uploads/bukti_transfer', $filename, 'public');
-      $kta->bukti_transfer = $filename; // Simpan nama file
+      $kta->bukti_transfer = $filename;
     }
 
-    // Ubah status perpanjangan KTA menjadi pending
     $kta->status_perpanjangan_kta = 'pending';
     $kta->save();
 
     return response()->json(['message' => 'Perpanjangan KTA diajukan.']);
   }
 
-  // Metode untuk menampilkan semua pengajuan KTA untuk admin
+  // Cek masa aktif KTA dan update jika sudah 1 tahun
+  public function checkExpiry()
+  {
+    $ktas = KTA::where('status', 'accepted')->get();
+
+    foreach ($ktas as $kta) {
+      if ($kta->tanggal_diterima && Carbon::parse($kta->tanggal_diterima)->addYear()->isPast()) {
+        $kta->status_perpanjangan_kta = 'inactive';
+        $kta->save();
+      }
+    }
+
+    return response()->json(['message' => 'Masa aktif KTA diperiksa dan diperbarui.']);
+  }
+
   public function index()
   {
-    $ktas = KTA::with('user')->get(); // Menampilkan semua KTA dengan relasi user
+    $ktas = KTA::with('user')->get();
     return response()->json($ktas);
   }
 
-  // Metode untuk menampilkan detail KTA tertentu
   public function show($id)
   {
-    // Temukan KTA berdasarkan ID dan muat relasi 'user'
-    $kta = KTA::with('user')->findOrFail($id);
+    $kta = KTA::find($id);
 
-    // Ambil data pengguna yang mengajukan KTA
-    $user = $kta->user;
+    if (!$kta) {
+      return response()->json(['message' => 'KTA not found'], 404);
+    }
 
-    // Siapkan data untuk ditampilkan
-    $response = [
-      'kta' => [
-        'id' => $kta->id,
-        'tanggal_diterima' => $kta->tanggal_diterima,
-        'status_perpanjangan_kta' => $kta->status_perpanjangan_kta,
-        'formulir_permohonan' => $kta->formulir_permohonan,
-        'pernyataan_kebenaran' => $kta->pernyataan_kebenaran,
-        'pengesahan_menkumham' => $kta->pengesahan_menkumham,
-        'akta_pendirian' => $kta->akta_pendirian,
-        'akta_perubahan' => $kta->akta_perubahan,
-        'npwp_perusahaan' => $kta->npwp_perusahaan,
-        'surat_domisili' => $kta->surat_domisili,
-        'ktp_pengurus' => $kta->ktp_pengurus,
-        'logo' => $kta->logo,
-        'foto_direktur' => $kta->foto_direktur,
-        'npwp_pengurus_akta' => $kta->npwp_pengurus_akta,
-        'bukti_transfer' => $kta->bukti_transfer,
-        'kabupaten_id' => $kta->kabupaten_id,
-        'tanggal_pengajuan' => $kta->created_at,
-        'updated_at' => $kta->updated_at,
-      ],
-      'user' => [
-        'id' => $user->id,
-        'nama_perusahaan' => $user->nama_perusahaan,
-        'nama_direktur' => $user->nama_direktur,
-        'email' => $user->email,
-        'no_telp' => $user->no_telp, // Contoh field tambahan
-        'alamat' => $user->alamat, // Contoh field tambahan
-        'tanggal_pengajuan' => $kta->created_at,
-        // Tambahkan informasi lain yang ingin ditampilkan
-      ],
-    ];
-
-    return response()->json($response);
+    return response()->json($kta, 200);
   }
 }

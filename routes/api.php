@@ -14,6 +14,8 @@ use App\Http\Controllers\Api\AgendaController;
 use App\Http\Controllers\Api\BeritaController;
 use App\Http\Controllers\Api\KomentarController;
 use App\Http\Controllers\Api\SbusRegistrationController;
+use App\Http\Controllers\Api\RekeningController;
+
 
 Route::get('/kota-kabupaten', [KotaKabupatenController::class, 'index']);
 
@@ -34,13 +36,19 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/kta', [KtaController::class, 'index'])->name('admin.kta.index');
     Route::get('/kta/{id}', [KtaController::class, 'show']);
     Route::post('kta/{id}/approval', [KtaController::class, 'approveOrReject']);
-    Route::get('/kta/check-expiry/{id}', [KtaController::class, 'checkExpiry']);
 
     //Validasi SBU Konstruksi
     Route::get('/sbu', [SbusRegistrationController::class, 'index']);
     Route::get('/sbu/{id}', [SbusRegistrationController::class, 'show']);
     Route::delete('/sbu/{id}', [SbusRegistrationController::class, 'destroy']);
     Route::get('/sbu/status', [SbusRegistrationController::class, 'status']);
+
+    //Rekening Tujuan Routes
+    Route::get('/rek', [RekeningController::class, 'index']);
+    Route::post('/rek', [RekeningController::class, 'store']);
+    Route::get('/rek/{id}', [RekeningController::class, 'show']);
+    Route::put('/rek/{id}', [RekeningController::class, 'update']);
+    Route::delete('/rek/{id}', [RekeningController::class, 'destroy']);
 
     // Sub Klasifikasi Routes
     Route::get('klasifikasis/{klasifikasiId}/sub-klasifikasis', [SubKlasifikasiController::class, 'index']);

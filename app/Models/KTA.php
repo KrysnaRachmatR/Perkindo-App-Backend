@@ -29,6 +29,7 @@ class KTA extends Model
         'bukti_transfer',
         'kabupaten_id',
         'user_id',
+        'rekening_id',
         'status', // Tambahkan status untuk pendaftaran KTA
         'status_perpanjangan_kta', // Status untuk perpanjangan KTA
         'tanggal_diterima', // Tanggal KTA diterima
@@ -78,5 +79,9 @@ class KTA extends Model
         $this->status = 'rejected';
         $this->komentar = $komentar; // Simpan komentar penolakan
         $this->save();
+    }
+    public function rekeningTujuan()
+    {
+        return $this->belongsTo(RekeningTujuan::class, 'rekening_id');
     }
 }

@@ -28,6 +28,7 @@ class KtaController extends Controller
       'foto_direktur' => 'nullable|file',
       'npwp_pengurus_akta' => 'required|file',
       'bukti_transfer' => 'required|file',
+      'rekening_id' => 'required|integer',
       'kabupaten_id' => 'required|integer',
     ]);
 
@@ -37,7 +38,8 @@ class KtaController extends Controller
 
     try {
       $data = $request->only([
-        'kabupaten_id'
+        'kabupaten_id',
+        'rekening_id'
       ]);
 
       $fileFields = [
@@ -52,7 +54,9 @@ class KtaController extends Controller
         'logo',
         'foto_direktur',
         'npwp_pengurus_akta',
-        'bukti_transfer'
+        'bukti_transfer',
+        'kabupaten_id',
+        'rekening_id'
       ];
 
       foreach ($fileFields as $field) {
@@ -71,42 +75,6 @@ class KtaController extends Controller
     }
   }
 
-  // Fungsi untuk memperbarui status KTA
-  public function update(Request $request, KTA $kta)
-  {
-    $validator = Validator::make($request->all(), [
-      'status' => 'nullable|in:accepted,rejected',
-      'status_perpanjangan_kta' => 'nullable|in:active,inactive,pending,rejected',
-      'komentar' => 'nullable|string',
-    ]);
-
-    if ($validator->fails()) {
-      return response()->json(['message' => 'Validation error', 'errors' => $validator->errors()], 422);
-    }
-
-    if ($request->status === 'rejected') {
-      $this->deleteFiles($kta);
-      $kta->delete();
-
-      return response()->json(['message' => 'Pendaftaran KTA ditolak dan data dihapus.'], 200);
-    }
-
-    if ($request->status === 'accepted') {
-      $kta->update([
-        'status' => 'accepted',
-        'tanggal_diterima' => now(),
-        'komentar' => null,
-      ]);
-    } elseif ($request->has('status_perpanjangan_kta')) {
-      $kta->update([
-        'status_perpanjangan_kta' => $request->status_perpanjangan_kta,
-        'komentar' => $request->status_perpanjangan_kta === 'rejected' ? $request->komentar : null,
-      ]);
-    }
-
-    return response()->json(['message' => 'Status KTA berhasil diperbarui.', 'kta' => $kta]);
-  }
-
   // Fungsi untuk menghapus file yang terkait dengan KTA jika ditolak
   protected function deleteFiles($kta)
   {
@@ -122,7 +90,9 @@ class KtaController extends Controller
       'logo',
       'foto_direktur',
       'npwp_pengurus_akta',
-      'bukti_transfer'
+      'bukti_transfer',
+      'kabupaten_id',
+      'rekening_id'
     ];
 
     foreach ($fileFields as $field) {
@@ -133,10 +103,8 @@ class KtaController extends Controller
   }
 
   // Fungsi untuk memperpanjang KTA
-  public function extend(
-    Request $request,
-    $id
-  ) {
+  public function extend(Request $request, $id)
+  {
     $request->validate([
       'bukti_transfer' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
     ]);
@@ -161,20 +129,6 @@ class KtaController extends Controller
     }
 
     return response()->json(['message' => 'Perpanjangan KTA berhasil diajukan.'], 200);
-  }
-
-  // Fungsi untuk memeriksa masa aktif KTA
-  public function checkExpiry()
-  {
-    $ktas = KTA::where('status', 'accepted')->get();
-
-    foreach ($ktas as $kta) {
-      if ($kta->tanggal_diterima && Carbon::parse($kta->tanggal_diterima)->addYear()->isPast()) {
-        $kta->update(['status_perpanjangan_kta' => 'inactive']);
-      }
-    }
-
-    return response()->json(['message' => 'Masa aktif KTA diperiksa dan diperbarui.']);
   }
 
   public function approveOrReject(Request $request, $id)

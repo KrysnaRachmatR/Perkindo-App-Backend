@@ -40,10 +40,10 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/kta/check-expiry', [KtaController::class, 'checkExpiry']);
 
     //Validasi SBU Konstruksi
-    Route::get('sbu-konstruksi', [SbusRegistrationController::class, 'index']);
-    Route::get('sbu-konstruksi/{id}', [SbusRegistrationController::class, 'show']);
-    Route::put('sbu-konstruksi/{id}', [SbusRegistrationController::class, 'update']);
-    Route::delete('sbu-konstruksi/{id}', [SbusRegistrationController::class, 'destroy']);
+    Route::get('/sbu', [SbusRegistrationController::class, 'index']);
+    Route::get('/sbu/{id}', [SbusRegistrationController::class, 'show']);
+    Route::delete('/sbu/{id}', [SbusRegistrationController::class, 'destroy']);
+    Route::put('sbu/{id}/status', [SbusRegistrationController::class, 'status']);
 
     // Sub Klasifikasi Routes
     Route::get('klasifikasis/{klasifikasiId}/sub-klasifikasis', [SubKlasifikasiController::class, 'index']);
@@ -97,4 +97,7 @@ Route::middleware(['auth:sanctum', 'user'])->group(function () {
     Route::get('kta/status', [KtaController::class, 'viewStatus'])->name('user.kta.status');
     Route::post('kta/extend', [KtaController::class, 'extendKta'])->name('user.kta.extend');
     Route::get('/kta/check-expiry', [KtaController::class, 'checkExpiry']);
+
+    Route::post('/sbu', [SbusRegistrationController::class, 'store']);
+    Route::get('/sbu/status', [SbusRegistrationController::class, 'status']);
 });

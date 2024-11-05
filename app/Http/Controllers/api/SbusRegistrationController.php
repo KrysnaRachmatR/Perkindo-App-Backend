@@ -3,23 +3,21 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\SbusRegistration;
+use App\Models\SBURegistrations;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
 
 class SbusRegistrationController extends Controller
 {
-  // Menampilkan semua pendaftaran SBU
   public function index()
   {
-    $registrations = SbusRegistration::all();
+    $registrations = SBURegistrations::with('user', 'klasifikasi', 'subKlasifikasi')->get();
     return response()->json($registrations);
   }
 
-  // Menyimpan pendaftaran SBU baru
   public function store(Request $request)
   {
-    // Validasi input
     $validator = Validator::make($request->all(), [
       'akta_asosiasi_aktif_masa_berlaku' => 'required|file|mimes:jpg,png,pdf|max:2048',
       'akta_perusahaan_pendirian' => 'required|file|mimes:jpg,png,pdf|max:2048',
@@ -40,32 +38,54 @@ class SbusRegistrationController extends Controller
       'surat_pernyataan_SMAP' => 'required|file|mimes:jpg,png,pdf|max:2048',
       'lampiran_tkk' => 'required|file|mimes:jpg,png,pdf|max:2048',
       'neraca_keuangan_2_tahun_terakhir' => 'required|file|mimes:jpg,png,pdf|max:2048',
-      'akun_oss' => 'required|string',
-      'klasifikasi_id' => 'required|exists:klasifikasis,id'
+      'akun_oss' => 'required|file|mimes:jpg,png,pdf|max:2048',
+      'klasifikasi_id' => 'required|exists:klasifikasis,id',
+      'sub_klasifikasi_id' => 'required|exists:sub_klasifikasis,id',
     ]);
 
     if ($validator->fails()) {
-      return response()->json($validator->errors(), 422);
+      return response()->json(
+        $validator->errors(),
+        422
+      );
     }
 
-    // Simpan file dan buat pendaftaran SBU
     $data = $request->all();
-    $data['status'] = 'pending'; // Status default
+    $data['user_id'] = auth()->id();
+    $fileFields = [
+      'akta_asosiasi_aktif_masa_berlaku',
+      'akta_perusahaan_pendirian',
+      'akta_perubahan',
+      'pengesahan_menkumham',
+      'nib_berbasis_resiko',
+      'ktp_pengurus',
+      'npwp_pengurus',
+      'skk',
+      'ijazah_legalisir',
+      'PJTBU',
+      'PJKSBU',
+      'kop_perusahaan',
+      'foto_pas_direktur',
+      'surat_pernyataan_tanggung_jawab_mutlak',
+      'surat_pernyataan_SMAP',
+      'lampiran_tkk',
+      'neraca_keuangan_2_tahun_terakhir',
+      'akun_oss'
+    ];
 
-    // Simpan file yang diupload
-    foreach ($request->files as $key => $file) {
-      $data[$key] = $file->store('uploads/sbus', 'public');
+    foreach ($fileFields as $field) {
+      if ($request->hasFile($field)) {
+        $data[$field] = $request->file($field)->store('uploads/sbus', 'public');
+      }
     }
 
-    $registration = SbusRegistration::create($data);
-
-    return response()->json($registration, 201);
+    $registration = SBURegistrations::create($data);
+    return response()->json($registration->load(['user', 'klasifikasi', 'subKlasifikasi']), 201);
   }
 
-  // Menampilkan detail pendaftaran SBU berdasarkan ID
   public function show($id)
   {
-    $registration = SbusRegistration::find($id);
+    $registration = SBURegistrations::with('klasifikasi', 'user')->find($id);
 
     if (!$registration) {
       return response()->json(['message' => 'Pendaftaran tidak ditemukan'], 404);
@@ -74,48 +94,70 @@ class SbusRegistrationController extends Controller
     return response()->json($registration);
   }
 
-  // Mengupdate pendaftaran SBU
-  public function update(Request $request, $id)
-  {
-    $registration = SbusRegistration::find($id);
-
-    if (!$registration) {
-      return response()->json(['message' => 'Pendaftaran tidak ditemukan'], 404);
-    }
-
-    // Validasi input
-    $validator = Validator::make($request->all(), [
-      'status' => 'required|in:accepted,pending,rejected',
-      'komentar' => 'nullable|string'
-    ]);
-
-    if ($validator->fails()) {
-      return response()->json($validator->errors(), 422);
-    }
-
-    // Update status dan komentar admin
-    $registration->status = $request->status;
-    if ($request->has('komentar')) {
-      // Anda dapat menyimpan komentar ke field lain atau menambahkannya ke model
-      $registration->komentar = $request->komentar; // Pastikan ada kolom komentar di migrasi
-    }
-
-    $registration->save();
-
-    return response()->json($registration);
-  }
-
-  // Menghapus pendaftaran SBU
   public function destroy($id)
   {
-    $registration = SbusRegistration::find($id);
+    $registration = SBURegistrations::find($id);
 
     if (!$registration) {
       return response()->json(['message' => 'Pendaftaran tidak ditemukan'], 404);
     }
 
     $registration->delete();
-
     return response()->json(['message' => 'Pendaftaran berhasil dihapus']);
+  }
+
+  public function status(Request $request, $id)
+  {
+    $validator = Validator::make($request->all(), [
+      'approval_status' => 'required|in:approved,rejected',
+      'admin_comment' => 'required_if:approval_status,rejected|string'
+    ]);
+
+    if ($validator->fails()) {
+      return response()->json($validator->errors(), 422);
+    }
+    $registration = SBURegistrations::findOrFail($id);
+    if ($request->approval_status === 'rejected') {
+      $filesToDelete = [
+        $registration->akta_asosiasi_aktif_masa_berlaku,
+        $registration->akta_perusahaan_pendirian,
+        $registration->akta_perubahan,
+        $registration->pengesahan_menkumham,
+        $registration->nib_berbasis_resiko,
+        $registration->ktp_pengurus,
+        $registration->npwp_pengurus,
+        $registration->skk,
+        $registration->ijazah_legalisir,
+        $registration->PJTBU,
+        $registration->PJKSBU,
+        $registration->kop_perusahaan,
+        $registration->foto_pas_direktur,
+        $registration->surat_pernyataan_tanggung_jawab_mutlak,
+        $registration->surat_pernyataan_SMAP,
+        $registration->lampiran_tkk,
+        $registration->neraca_keuangan_2_tahun_terakhir,
+        $registration->akun_oss,
+      ];
+
+      foreach ($filesToDelete as $file) {
+        if ($file && file_exists(public_path($file))) {
+          unlink(public_path($file));
+        }
+      }
+      $registration->delete();
+
+      return response()->json([
+        'message' => 'Pendaftaran SBU telah ditolak dan data dihapus.',
+      ], 200);
+    } else {
+      $registration->approval_status = $request->approval_status;
+      $registration->admin_comment = null;
+      $registration->save();
+
+      return response()->json([
+        'message' => 'Pendaftaran SBU berhasil disetujui.',
+        'registration' => $registration->load(['user', 'klasifikasi', 'subKlasifikasi'])
+      ], 200);
+    }
   }
 }

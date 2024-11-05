@@ -5,12 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class SbusRegistration extends Model
+class SBURegistrations extends Model
 {
     use HasFactory;
 
     protected $table = 'sbus_registrations';
-
     protected $fillable = [
         'akta_asosiasi_aktif_masa_berlaku',
         'akta_perusahaan_pendirian',
@@ -33,13 +32,24 @@ class SbusRegistration extends Model
         'neraca_keuangan_2_tahun_terakhir',
         'akun_oss',
         'klasifikasi_id',
-        'status',
-        'komentar',
+        'sub_klasifikasi_id',
+        'user_id',
+        'approval_status',
+        'admin_comment',
     ];
 
-    // Relasi ke Klasifikasi
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function klasifikasi()
     {
-        return $this->belongsTo(Klasifikasi::class);
+        return $this->belongsTo(Klasifikasi::class, 'klasifikasi_id');
+    }
+
+    public function subKlasifikasi()
+    {
+        return $this->belongsTo(SubKlasifikasi::class, 'sub_klasifikasi_id');
     }
 }

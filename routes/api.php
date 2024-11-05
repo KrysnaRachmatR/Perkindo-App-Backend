@@ -33,17 +33,14 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     //Validasi KTA
     Route::get('/kta', [KtaController::class, 'index'])->name('admin.kta.index');
     Route::get('/kta/{id}', [KtaController::class, 'show']);
-    Route::put('/kta/{kta}', [KtaController::class, 'update'])->name('admin.kta.update');
-    Route::get('/kta/perpanjangan', [KtaController::class, 'viewExtensions'])->name('admin.kta.perpanjangan');
-    Route::put('/kta/{kta}/extend/accept', [KtaController::class, 'update'])->name('admin.kta.extend.accept');
-    Route::put('/kta/{kta}/extend/reject', [KtaController::class, 'update'])->name('admin.kta.extend.reject');
-    Route::get('/kta/check-expiry', [KtaController::class, 'checkExpiry']);
+    Route::post('kta/{id}/approval', [KtaController::class, 'approveOrReject']);
+    Route::get('/kta/check-expiry/{id}', [KtaController::class, 'checkExpiry']);
 
     //Validasi SBU Konstruksi
     Route::get('/sbu', [SbusRegistrationController::class, 'index']);
     Route::get('/sbu/{id}', [SbusRegistrationController::class, 'show']);
     Route::delete('/sbu/{id}', [SbusRegistrationController::class, 'destroy']);
-    Route::put('sbu/{id}/status', [SbusRegistrationController::class, 'status']);
+    Route::get('/sbu/status', [SbusRegistrationController::class, 'status']);
 
     // Sub Klasifikasi Routes
     Route::get('klasifikasis/{klasifikasiId}/sub-klasifikasis', [SubKlasifikasiController::class, 'index']);
@@ -93,11 +90,8 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 Route::middleware(['auth:sanctum', 'user'])->group(function () {
 
     Route::post('/kta', [KtaController::class, 'store']);
-    Route::post('kta/submit', [KtaController::class, 'submitKta'])->name('user.kta.submit');
     Route::get('kta/status', [KtaController::class, 'viewStatus'])->name('user.kta.status');
-    Route::post('kta/extend', [KtaController::class, 'extendKta'])->name('user.kta.extend');
-    Route::get('/kta/check-expiry', [KtaController::class, 'checkExpiry']);
+    Route::post('kta/{id}/extend', [KtaController::class, 'extend']);
 
     Route::post('/sbu', [SbusRegistrationController::class, 'store']);
-    Route::get('/sbu/status', [SbusRegistrationController::class, 'status']);
 });

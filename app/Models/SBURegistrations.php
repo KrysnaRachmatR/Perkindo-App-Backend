@@ -34,6 +34,7 @@ class SBURegistrations extends Model
         'klasifikasi_id',
         'sub_klasifikasi_id',
         'user_id',
+        'rekening_id',
         'approval_status',
         'admin_comment',
     ];
@@ -51,5 +52,9 @@ class SBURegistrations extends Model
     public function subKlasifikasi()
     {
         return $this->belongsTo(SubKlasifikasi::class, 'sub_klasifikasi_id');
+    }
+    public function rekeningTujuan()
+    {
+        return $this->belongsTo(RekeningTujuan::class, 'rekening_id');
     }
 }

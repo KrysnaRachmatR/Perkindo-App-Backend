@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\SBURegistrations;
+use app\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
@@ -160,5 +161,32 @@ class SbusRegistrationController extends Controller
         'registration' => $registration->load(['user', 'klasifikasi', 'subKlasifikasi'])
       ], 200);
     }
+  }
+
+  public function search(Request $request)
+  {
+    $searchTerm = $request->input('search'); // Ambil input pencarian
+
+    // Query untuk mencari KTA berdasarkan relasi user
+    $ktas = SBURegistrations::where('approval_status', 'approved') // Pastikan status KTA adalah accepted
+      ->whereHas('user', function ($query) use ($searchTerm) {
+        $query->where('nama_perusahaan', 'like', '%' . $searchTerm . '%')
+          ->orWhere('alamat_perusahaan', 'like', '%' . $searchTerm . '%')
+          ->orWhere('email', 'like', '%' . $searchTerm . '%');
+      })
+      ->get(); // Ambil data KTA yang memenuhi kriteria pencarian
+
+    // Jika tidak ada hasil pencarian
+    if ($ktas->isEmpty()) {
+      return response()->json([
+        'success' => false,
+        'message' => 'KTA tidak ditemukan.'
+      ], 404); // Kembalikan 404 jika tidak ada hasil
+    }
+
+    return response()->json([
+      'success' => true,
+      'data' => $ktas
+    ], 200); // Kembalikan hasil pencarian
   }
 }

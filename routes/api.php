@@ -27,22 +27,28 @@ Route::post('/instagram/refresh', [InstagramController::class, 'serviceRefresh']
 Route::post('/berita/{berita_id}/komentar', [KomentarController::class, 'store']);
 Route::get('/berita/{berita_id}/komentar', [KomentarController::class, 'index']);
 
+
+
 // Middleware untuk Admin Only
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     // Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    Route::get('/sbu/search', [SbusRegistrationController::class, 'search']);
+    Route::get('kta/search', [KtaController::class, 'search']);
+
 
     //Validasi KTA
     Route::get('/kta', [KtaController::class, 'index'])->name('admin.kta.index');
     Route::get('/kta/{id}', [KtaController::class, 'show']);
     Route::post('kta/{id}/approval', [KtaController::class, 'approveOrReject']);
+    Route::put('/kta/approve/{id}', [KTAController::class, 'approveKTA']);
 
     //Validasi SBU Konstruksi
     Route::get('/sbu', [SbusRegistrationController::class, 'index']);
     Route::get('/sbu/{id}', [SbusRegistrationController::class, 'show']);
     Route::delete('/sbu/{id}', [SbusRegistrationController::class, 'destroy']);
     Route::post('/sbu/status/{id}', [SbusRegistrationController::class, 'status']);
-    Route::post('sbu/search', [SbusRegistrationController::class, 'search']);
+
 
     //Rekening Tujuan Routes
     Route::get('/rek', [RekeningController::class, 'index']);

@@ -3,15 +3,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\NonKonstruksiKlasifikasi;
 use Illuminate\Http\Request;
-use App\Models\KlasifikasiNonKonstruksi;
+use Illuminate\Support\Facades\Validator;
 
 class NonKonstruksiKlasifikasiController extends Controller
 {
     // Menampilkan semua klasifikasi dengan sub klasifikasi
     public function indexWithSubKlasifikasiAndCodes()
     {
-        $klasifikasis = KlasifikasiNonKonstruksi::with('subKlasifikasis')->get();
+        $klasifikasis = NonKonstruksiKlasifikasi::with('subKlasifikasis')->get();
 
         return response()->json([
             'success' => true,
@@ -19,25 +20,34 @@ class NonKonstruksiKlasifikasiController extends Controller
         ]);
     }
 
-    // Menyimpan klasifikasi baru
+    // Menyimpan data klasifikasi baru
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $validatedData = $request->validate([
             'nama' => 'required|string|max:255',
         ]);
 
-        $klasifikasi = KlasifikasiNonKonstruksi::create($validated);
+        try {
+            $klasifikasi = NonKonstruksiKlasifikasi::create($validatedData);
 
-        return response()->json([
-            'success' => true,
-            'data' => $klasifikasi,
-        ], 201);
+            return response()->json([
+                'success' => true,
+                'message' => 'Data klasifikasi berhasil ditambahkan',
+                'data' => $klasifikasi,
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan pada server',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
-    // Menampilkan klasifikasi berdasarkan ID
+    // Menampilkan data klasifikasi berdasarkan ID
     public function show($id)
     {
-        $klasifikasi = KlasifikasiNonKonstruksi::findOrFail($id);
+        $klasifikasi = NonKonstruksiKlasifikasi::with('subKlasifikasis')->findOrFail($id);
 
         return response()->json([
             'success' => true,
@@ -45,10 +55,10 @@ class NonKonstruksiKlasifikasiController extends Controller
         ]);
     }
 
-    // Mengupdate klasifikasi
+    // Mengupdate data klasifikasi
     public function update(Request $request, $id)
     {
-        $klasifikasi = KlasifikasiNonKonstruksi::findOrFail($id);
+        $klasifikasi = NonKonstruksiKlasifikasi::findOrFail($id);
 
         $validated = $request->validate([
             'nama' => 'sometimes|required|string|max:255',
@@ -58,14 +68,15 @@ class NonKonstruksiKlasifikasiController extends Controller
 
         return response()->json([
             'success' => true,
+            'message' => 'Data klasifikasi berhasil diupdate',
             'data' => $klasifikasi,
         ]);
     }
 
-    // Menghapus klasifikasi
+    // Menghapus data klasifikasi
     public function destroy($id)
     {
-        $klasifikasi = KlasifikasiNonKonstruksi::findOrFail($id);
+        $klasifikasi = NonKonstruksiKlasifikasi::findOrFail($id);
         $klasifikasi->delete();
 
         return response()->json([

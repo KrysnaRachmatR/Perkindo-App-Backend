@@ -32,7 +32,7 @@ class KlasifikasiController extends Controller
   }
 
   // Menambahkan klasifikasi baru
-  public function storeWithDetails(Request $request)
+  public function store(Request $request)
   {
     $validated = $request->validate([
       'nama' => 'required|string|max:255',

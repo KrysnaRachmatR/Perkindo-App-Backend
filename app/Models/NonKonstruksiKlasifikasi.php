@@ -6,11 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class KlasifikasiNonKonstruksi extends Model
+class NonKonstruksiKlasifikasi extends Model
 {
     use HasFactory;
 
-    protected $table = 'klasifikasi_non_konstruksi'; // Nama tabel
+    protected $table = 'non_konstruksi_klasifikasis'; // Nama tabel
 
     protected $fillable = [
         'nama',

@@ -39,6 +39,7 @@ class SbusRegistrationController extends Controller
       'lampiran_tkk' => 'required|file|mimes:jpg,png,pdf|max:2048',
       'neraca_keuangan_2_tahun_terakhir' => 'required|file|mimes:jpg,png,pdf|max:2048',
       'akun_oss' => 'required|file|mimes:jpg,png,pdf|max:2048',
+      'rekening_id' => 'required|integer',
       'klasifikasi_id' => 'required|exists:klasifikasis,id',
       'sub_klasifikasi_id' => 'required|exists:sub_klasifikasis,id',
     ]);

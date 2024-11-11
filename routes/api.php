@@ -41,7 +41,8 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/sbu', [SbusRegistrationController::class, 'index']);
     Route::get('/sbu/{id}', [SbusRegistrationController::class, 'show']);
     Route::delete('/sbu/{id}', [SbusRegistrationController::class, 'destroy']);
-    Route::get('/sbu/status', [SbusRegistrationController::class, 'status']);
+    Route::post('/sbu/status/{id}', [SbusRegistrationController::class, 'status']);
+    Route::post('sbu/search', [SbusRegistrationController::class, 'search']);
 
     //Rekening Tujuan Routes
     Route::get('/rek', [RekeningController::class, 'index']);

@@ -6,16 +6,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class SubKlasifikasiNonKonstruksi extends Model
+class NonKonstruksiSubKlasifikasi extends Model
 {
     use HasFactory;
 
-    protected $table = 'sub_klasifikasi_non_konstruksi'; // Nama tabel
+    protected $table = 'non_konstruksi_sub_klasifikasis'; // Nama tabel
 
     protected $fillable = [
+        'klasifikasi_id',
         'nama',
         'sbu_code',
-        'klasifikasi_id',
     ];
 
     /**
@@ -25,6 +25,6 @@ class SubKlasifikasiNonKonstruksi extends Model
      */
     public function klasifikasi(): BelongsTo
     {
-        return $this->belongsTo(KlasifikasiNonKonstruksi::class, 'klasifikasi_id');
+        return $this->belongsTo(NonKonstruksiKlasifikasi::class, 'klasifikasi_id');
     }
 }

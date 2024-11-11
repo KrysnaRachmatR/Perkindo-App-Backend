@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\KTA;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
@@ -158,6 +159,38 @@ class KtaController extends Controller
     ]);
   }
 
+  public function approveKTA($id)
+  {
+    try {
+      // Cari pendaftaran KTA berdasarkan ID
+      $registration = KTA::findOrFail($id);
+
+      // Periksa apakah status sudah "approved"
+      if ($registration->status === 'accepted') {
+        return response()->json([
+          'success' => false,
+          'message' => 'Pendaftaran KTA sudah disetujui sebelumnya.',
+        ], 400);
+      }
+
+      // Ubah status menjadi "approved"
+      $registration->status = 'accepted';
+      $registration->save();
+
+      return response()->json([
+        'success' => true,
+        'message' => 'Pendaftaran KTA berhasil disetujui.',
+        'data' => $registration,
+      ], 200);
+    } catch (\Exception $e) {
+      return response()->json([
+        'success' => false,
+        'message' => 'Terjadi kesalahan saat menyetujui pendaftaran KTA.',
+        'error' => $e->getMessage(),
+      ], 500);
+    }
+  }
+
   // Fungsi untuk mendapatkan semua data KTA
   public function index()
   {
@@ -175,5 +208,32 @@ class KtaController extends Controller
     }
 
     return response()->json($kta, 200);
+  }
+
+  public function search(Request $request)
+  {
+    $searchTerm = $request->input('search'); // Ambil input pencarian
+
+    // Query untuk mencari KTA berdasarkan relasi user
+    $ktas = KTA::where('status', 'accepted') // Pastikan status KTA adalah accepted
+      ->whereHas('user', function ($query) use ($searchTerm) {
+        $query->where('nama_perusahaan', 'like', '%' . $searchTerm . '%')
+          ->orWhere('alamat_perusahaan', 'like', '%' . $searchTerm . '%')
+          ->orWhere('email', 'like', '%' . $searchTerm . '%');
+      })
+      ->get(); // Ambil data KTA yang memenuhi kriteria pencarian
+
+    // Jika tidak ada hasil pencarian
+    if ($ktas->isEmpty()) {
+      return response()->json([
+        'success' => false,
+        'message' => 'KTA tidak ditemukan.'
+      ], 404); // Kembalikan 404 jika tidak ada hasil
+    }
+
+    return response()->json([
+      'success' => true,
+      'data' => $ktas
+    ], 200); // Kembalikan hasil pencarian
   }
 }

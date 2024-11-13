@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\BeritaController;
 use App\Http\Controllers\Api\KomentarController;
 use App\Http\Controllers\Api\SbusRegistrationController;
 use App\Http\Controllers\Api\RekeningController;
+use App\Http\Controllers\Api\ProfileController;
 
 
 Route::get('/kota-kabupaten', [KotaKabupatenController::class, 'index']);
@@ -26,6 +27,7 @@ Route::get('/instagram/media', [InstagramController::class, 'getMedia']);
 Route::post('/instagram/refresh', [InstagramController::class, 'serviceRefresh']);
 Route::post('/berita/{berita_id}/komentar', [KomentarController::class, 'store']);
 Route::get('/berita/{berita_id}/komentar', [KomentarController::class, 'index']);
+Route::get('/profile', [ProfileController::class, 'getProfile']);
 
 
 
@@ -36,6 +38,11 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/sbu/search', [SbusRegistrationController::class, 'search']);
     Route::get('kta/search', [KtaController::class, 'search']);
 
+    // CRUD Konten Profile
+
+    Route::post('/profile', [ProfileController::class, 'store']);
+    Route::put('/profile/{id}', [ProfileController::class, 'update']);
+    Route::delete('/profile/{id}', [ProfileController::class, 'destroy']);
 
     //Validasi KTA
     Route::get('/kta', [KtaController::class, 'index'])->name('admin.kta.index');

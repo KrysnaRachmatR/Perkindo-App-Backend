@@ -10,6 +10,7 @@ class SBURegistrations extends Model
     use HasFactory;
 
     protected $table = 'sbus_registrations';
+
     protected $fillable = [
         'akta_asosiasi_aktif_masa_berlaku',
         'akta_perusahaan_pendirian',
@@ -37,8 +38,16 @@ class SBURegistrations extends Model
         'rekening_id',
         'approval_status',
         'admin_comment',
+        'expired_at'
     ];
 
+    protected $casts = [
+        'approval_status' => 'string',
+        'admin_comment' => 'string',
+        'expiration_date' => 'datetime',
+    ];
+
+    // Relasi ke model User
     public function user()
     {
         return $this->belongsTo(User::class);

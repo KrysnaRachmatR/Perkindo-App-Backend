@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\SBURegistrations;
-use app\Models\User;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
@@ -46,10 +46,7 @@ class SbusRegistrationController extends Controller
     ]);
 
     if ($validator->fails()) {
-      return response()->json(
-        $validator->errors(),
-        422
-      );
+      return response()->json($validator->errors(), 422);
     }
 
     $data = $request->all();
@@ -118,42 +115,50 @@ class SbusRegistrationController extends Controller
     if ($validator->fails()) {
       return response()->json($validator->errors(), 422);
     }
+
     $registration = SBURegistrations::findOrFail($id);
+    if ($registration->expired_at && $registration->expired_at < now()) {
+      $registration->status_aktif = 'inactive';
+      $registration->save();
+    }
+
     if ($request->approval_status === 'rejected') {
-      $filesToDelete = [
-        $registration->akta_asosiasi_aktif_masa_berlaku,
-        $registration->akta_perusahaan_pendirian,
-        $registration->akta_perubahan,
-        $registration->pengesahan_menkumham,
-        $registration->nib_berbasis_resiko,
-        $registration->ktp_pengurus,
-        $registration->npwp_pengurus,
-        $registration->skk,
-        $registration->ijazah_legalisir,
-        $registration->PJTBU,
-        $registration->PJKSBU,
-        $registration->kop_perusahaan,
-        $registration->foto_pas_direktur,
-        $registration->surat_pernyataan_tanggung_jawab_mutlak,
-        $registration->surat_pernyataan_SMAP,
-        $registration->lampiran_tkk,
-        $registration->neraca_keuangan_2_tahun_terakhir,
-        $registration->akun_oss,
+      $files = [
+        'akta_asosiasi_aktif_masa_berlaku',
+        'akta_perusahaan_pendirian',
+        'akta_perubahan',
+        'pengesahan_menkumham',
+        'nib_berbasis_resiko',
+        'ktp_pengurus',
+        'npwp_pengurus',
+        'skk',
+        'ijazah_legalisir',
+        'PJTBU',
+        'PJKSBU',
+        'kop_perusahaan',
+        'foto_pas_direktur',
+        'surat_pernyataan_tanggung_jawab_mutlak',
+        'surat_pernyataan_SMAP',
+        'lampiran_tkk',
+        'neraca_keuangan_2_tahun_terakhir',
+        'akun_oss'
       ];
 
-      foreach ($filesToDelete as $file) {
-        if ($file && file_exists(public_path($file))) {
-          unlink(public_path($file));
+      foreach ($files as $file) {
+        if ($registration->$file && file_exists(public_path($registration->$file))) {
+          unlink(public_path($registration->$file));
         }
       }
-      $registration->delete();
 
+      $registration->delete();
       return response()->json([
         'message' => 'Pendaftaran SBU telah ditolak dan data dihapus.',
       ], 200);
     } else {
-      $registration->approval_status = $request->approval_status;
+      $registration->approval_status = 'approved';
       $registration->admin_comment = null;
+      $registration->status_aktif = 'active';
+      $registration->expired_at = now()->addYears(2);
       $registration->save();
 
       return response()->json([
@@ -163,30 +168,29 @@ class SbusRegistrationController extends Controller
     }
   }
 
+
   public function search(Request $request)
   {
-    $searchTerm = $request->input('search'); // Ambil input pencarian
+    $searchTerm = $request->input('search');
 
-    // Query untuk mencari KTA berdasarkan relasi user
-    $ktas = SBURegistrations::where('approval_status', 'approved') // Pastikan status KTA adalah accepted
+    $ktas = SBURegistrations::where('approval_status', 'approved')
       ->whereHas('user', function ($query) use ($searchTerm) {
         $query->where('nama_perusahaan', 'like', '%' . $searchTerm . '%')
           ->orWhere('alamat_perusahaan', 'like', '%' . $searchTerm . '%')
           ->orWhere('email', 'like', '%' . $searchTerm . '%');
       })
-      ->get(); // Ambil data KTA yang memenuhi kriteria pencarian
+      ->get();
 
-    // Jika tidak ada hasil pencarian
     if ($ktas->isEmpty()) {
       return response()->json([
         'success' => false,
-        'message' => 'KTA tidak ditemukan.'
-      ], 404); // Kembalikan 404 jika tidak ada hasil
+        'message' => 'SBU tidak ditemukan.'
+      ], 404);
     }
 
     return response()->json([
       'success' => true,
       'data' => $ktas
-    ], 200); // Kembalikan hasil pencarian
+    ], 200);
   }
 }

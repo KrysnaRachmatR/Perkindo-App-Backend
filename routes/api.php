@@ -23,11 +23,19 @@ Route::get('/kota-kabupaten', [KotaKabupatenController::class, 'index']);
 // Route Auth (Login & Register)
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/register', [AuthController::class, 'register'])->name('register');
+
+//API Instagram
 Route::get('/instagram/media', [InstagramController::class, 'getMedia']);
 Route::post('/instagram/refresh', [InstagramController::class, 'serviceRefresh']);
+//Komentar Berita
+Route::get('/berita', [BeritaController::class, 'index']);
+Route::get('/beritas/{id}', [BeritaController::class, 'show']);
 Route::post('/berita/{berita_id}/komentar', [KomentarController::class, 'store']);
 Route::get('/berita/{berita_id}/komentar', [KomentarController::class, 'index']);
 Route::get('/profile', [ProfileController::class, 'getProfile']);
+//Agenda
+Route::get('/agenda', [AgendaController::class, 'index']);
+Route::get('/agendas/{id}', [AgendaController::class, 'show']);
 
 
 
@@ -35,14 +43,10 @@ Route::get('/profile', [ProfileController::class, 'getProfile']);
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     // Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    //Search Fitur
     Route::get('/sbu/search', [SbusRegistrationController::class, 'search']);
     Route::get('kta/search', [KtaController::class, 'search']);
-
-    // CRUD Konten Profile
-
-    Route::post('/profile', [ProfileController::class, 'store']);
-    Route::put('/profile/{id}', [ProfileController::class, 'update']);
-    Route::delete('/profile/{id}', [ProfileController::class, 'destroy']);
 
     //Validasi KTA
     Route::get('/kta', [KtaController::class, 'index'])->name('admin.kta.index');
@@ -53,9 +57,8 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     //Validasi SBU Konstruksi
     Route::get('/sbu', [SbusRegistrationController::class, 'index']);
     Route::get('/sbu/{id}', [SbusRegistrationController::class, 'show']);
+    Route::put('/sbu/{id}/status', [SbusRegistrationController::class, 'status']);
     Route::delete('/sbu/{id}', [SbusRegistrationController::class, 'destroy']);
-    Route::post('/sbu/status/{id}', [SbusRegistrationController::class, 'status']);
-
 
     //Rekening Tujuan Routes
     Route::get('/rek', [RekeningController::class, 'index']);
@@ -93,26 +96,28 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::put('non-konstruksi/klasifikasis/{klasifikasiId}/sub-klasifikasis/{subKlasifikasiId}', [NonKonstruksiSubKlasifikasiController::class, 'update']);
     Route::delete('non-konstruksi/klasifikasis/{klasifikasiId}/sub-klasifikasis/{subKlasifikasiId}', [NonKonstruksiSubKlasifikasiController::class, 'destroy']);
 
+    //Content Route//
+
     // Route Agenda
-    Route::get('/agendas', [AgendaController::class, 'index']); // Menampilkan semua agenda
-    Route::post('/agendas', [AgendaController::class, 'store']); // Menambah agenda
-    Route::get('/agendas/{id}', [AgendaController::class, 'show']); // Menampilkan agenda berdasarkan ID
-    Route::put('/agendas/{id}', [AgendaController::class, 'update']); // Memperbarui agenda
-    Route::delete('/agendas/{id}', [AgendaController::class, 'destroy']); // Menghapus agenda
+    Route::post('/agenda', [AgendaController::class, 'store']);
+    Route::put('/agenda/{id}', [AgendaController::class, 'update']);
+    Route::delete('/agenda/{id}', [AgendaController::class, 'destroy']);
 
     // Route Berita
-    Route::get('/beritas', [BeritaController::class, 'index']); // Menampilkan semua berita
-    Route::post('/beritas', [BeritaController::class, 'store']); // Menambahkan berita
-    Route::get('/beritas/{id}', [BeritaController::class, 'show']); // Menampilkan berita berdasarkan ID
-    Route::delete('/beritas/{id}', [BeritaController::class, 'destroy']); // Menghapus berita
-    Route::get('/berita/{berita_id}/komentar', [KomentarController::class, 'index']);
+    Route::post('/berita', [BeritaController::class, 'store']);
+    Route::delete('/berita/{id}', [BeritaController::class, 'destroy']);
+
+    // CRUD Konten Profile
+    Route::post('/profile', [ProfileController::class, 'store']);
+    Route::put('/profile/{id}', [ProfileController::class, 'update']);
+    Route::delete('/profile/{id}', [ProfileController::class, 'destroy']);
 });
 
 
 Route::middleware(['auth:sanctum', 'user'])->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     Route::post('/kta', [KtaController::class, 'store']);
-    Route::get('kta/status', [KtaController::class, 'viewStatus'])->name('user.kta.status');
     Route::post('kta/{id}/extend', [KtaController::class, 'extend']);
 
     Route::post('/sbu', [SbusRegistrationController::class, 'store']);

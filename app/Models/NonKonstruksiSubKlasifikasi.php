@@ -27,4 +27,9 @@ class NonKonstruksiSubKlasifikasi extends Model
     {
         return $this->belongsTo(NonKonstruksiKlasifikasi::class, 'klasifikasi_id');
     }
+
+    public function sbusRegistrations()
+    {
+        return $this->hasMany(SBUNRegistrations::class);
+    }
 }

@@ -23,6 +23,11 @@ class NonKonstruksiKlasifikasi extends Model
      */
     public function subKlasifikasis(): HasMany
     {
-        return $this->hasMany(SubKlasifikasiNonKonstruksi::class, 'klasifikasi_id');
+        return $this->hasMany(NonKonstruksiKlasifikasi::class, 'klasifikasi_id');
+    }
+
+    public function sbunRegistrations()
+    {
+        return $this->hasMany(SBUNRegistrations::class);
     }
 }

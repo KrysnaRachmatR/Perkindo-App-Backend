@@ -16,7 +16,7 @@ use App\Http\Controllers\Api\KomentarController;
 use App\Http\Controllers\Api\SbusRegistrationController;
 use App\Http\Controllers\Api\RekeningController;
 use App\Http\Controllers\Api\ProfileController;
-
+use App\Http\Controllers\Api\SbunRegistrationController;
 
 Route::get('/kota-kabupaten', [KotaKabupatenController::class, 'index']);
 
@@ -46,7 +46,8 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
     //Search Fitur
     Route::get('/sbu/search', [SbusRegistrationController::class, 'search']);
-    Route::get('kta/search', [KtaController::class, 'search']);
+    Route::get('/kta/search', [KtaController::class, 'search']);
+    Route::get('/sbun/search', [SbunRegistrationController::class, 'search']);
 
     //Validasi KTA
     Route::get('/kta', [KtaController::class, 'index'])->name('admin.kta.index');
@@ -59,6 +60,11 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/sbu/{id}', [SbusRegistrationController::class, 'show']);
     Route::put('/sbu/{id}/status', [SbusRegistrationController::class, 'status']);
     Route::delete('/sbu/{id}', [SbusRegistrationController::class, 'destroy']);
+
+    //Validasi SBU Non Konstruksi
+    Route::get('/sbun', [SbunRegistrationController::class, 'index']);
+    Route::get('/sbun/{id}', [SbunRegistrationController::class, 'show']);
+    Route::put('/sbun/{id}/status', [SbunRegistrationController::class, 'status']);
 
     //Rekening Tujuan Routes
     Route::get('/rek', [RekeningController::class, 'index']);
@@ -121,4 +127,5 @@ Route::middleware(['auth:sanctum', 'user'])->group(function () {
     Route::post('kta/{id}/extend', [KtaController::class, 'extend']);
 
     Route::post('/sbu', [SbusRegistrationController::class, 'store']);
+    Route::post('/sbun', [SbunRegistrationController::class, 'store']);
 });

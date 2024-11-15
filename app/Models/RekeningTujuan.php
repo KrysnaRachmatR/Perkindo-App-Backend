@@ -20,4 +20,14 @@ class RekeningTujuan extends Model
     {
         return $this->hasMany(KTA::class, 'rekening_id');
     }
+
+    public function sbusRegistrations()
+    {
+        return $this->hasMany(SbuRegistrations::class);
+    }
+
+    public function sbunRegistrations()
+    {
+        return $this->hasMany(SbunRegistrations::class);
+    }
 }

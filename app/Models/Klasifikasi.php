@@ -18,6 +18,6 @@ class Klasifikasi extends Model
 
     public function sbusRegistrations()
     {
-        return $this->hasMany(SbusRegistration::class);
+        return $this->hasMany(SbuRegistrations::class);
     }
 }

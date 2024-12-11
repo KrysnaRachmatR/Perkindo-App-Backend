@@ -24,9 +24,6 @@ Route::get('/kota-kabupaten', [KotaKabupatenController::class, 'index']);
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/register', [AuthController::class, 'register'])->name('register');
 
-//API Instagram
-Route::get('/instagram/media', [InstagramController::class, 'getMedia']);
-Route::post('/instagram/refresh', [InstagramController::class, 'serviceRefresh']);
 //Komentar Berita
 Route::get('/berita', [BeritaController::class, 'index']);
 Route::get('/beritas/{id}', [BeritaController::class, 'show']);

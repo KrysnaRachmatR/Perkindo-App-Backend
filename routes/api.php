@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\NonKonstruksiSubKlasifikasiController;
 use App\Http\Controllers\Api\InstagramController;
 use App\Http\Controllers\Api\AgendaController;
 use App\Http\Controllers\Api\BeritaController;
+use App\Http\Controllers\Api\GaleriController;
 use App\Http\Controllers\Api\KomentarController;
 use App\Http\Controllers\Api\SbusRegistrationController;
 use App\Http\Controllers\Api\RekeningController;
@@ -23,6 +24,9 @@ Route::get('/kota-kabupaten', [KotaKabupatenController::class, 'index']);
 // Route Auth (Login & Register)
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/register', [AuthController::class, 'register'])->name('register');
+
+//Route Get Galeri
+Route::get('/galeri', [GaleriController::class, 'index']);
 
 //Komentar Berita
 Route::get('/berita', [BeritaController::class, 'index']);
@@ -114,6 +118,11 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::post('/profile', [ProfileController::class, 'store']);
     Route::put('/profile/{id}', [ProfileController::class, 'update']);
     Route::delete('/profile/{id}', [ProfileController::class, 'destroy']);
+
+    //CRUD Konten Galeri
+    Route::post('/galeri', [GaleriController::class, 'store']);
+    Route::put('/galeri/{id}', [GaleriController::class, 'update']);
+    Route::delete('/galeri/{id}', [GaleriController::class, 'destroy']);
 });
 
 

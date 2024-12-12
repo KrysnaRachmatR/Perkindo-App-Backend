@@ -40,7 +40,7 @@ class KtaController extends Controller
     try {
       $data = $request->only([
         'kabupaten_id',
-        'rekening_id'
+        'rekening_id',
       ]);
 
       $fileFields = [
@@ -66,8 +66,10 @@ class KtaController extends Controller
         }
       }
 
+      // Menambahkan user_id
       $data['user_id'] = Auth::id();
 
+      // Menyimpan pengajuan KTA
       $kta = KTA::create($data);
 
       return response()->json(['message' => 'Pengajuan KTA berhasil disubmit', 'kta' => $kta], 201);
@@ -110,7 +112,7 @@ class KtaController extends Controller
       'bukti_transfer' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
     ]);
 
-    // Cari KTA berdasarkan ID, atau beri respon jika tidak ditemukan
+    // Cari KTA berdasarkan ID
     $kta = KTA::findOrFail($id);
 
     if ($request->hasFile('bukti_transfer')) {
@@ -132,6 +134,7 @@ class KtaController extends Controller
     return response()->json(['message' => 'Perpanjangan KTA berhasil diajukan.'], 200);
   }
 
+  // Fungsi untuk menyetujui atau menolak perpanjangan KTA
   public function approveOrReject(Request $request, $id)
   {
     $request->validate([
@@ -144,9 +147,7 @@ class KtaController extends Controller
     if ($request->status_perpanjangan_kta === 'accepted') {
       $kta->status_perpanjangan_kta = 'active';
       $kta->tanggal_diterima = now(); // Tanggal diperpanjang
-    } else if (
-      $request->status_perpanjangan_kta === 'rejected'
-    ) {
+    } else if ($request->status_perpanjangan_kta === 'rejected') {
       $kta->status_perpanjangan_kta = 'rejected';
       $kta->komentar = $request->komentar; // Simpan komentar penolakan dari admin
     }
@@ -158,30 +159,40 @@ class KtaController extends Controller
       'kta' => $kta
     ]);
   }
-
+  // Fungsi untuk menyetujui KTA
   public function approveKTA($id)
   {
     try {
       // Cari pendaftaran KTA berdasarkan ID
       $registration = KTA::findOrFail($id);
 
-      // Periksa apakah status sudah "approved"
-      if ($registration->status === 'accepted') {
+      // Periksa apakah status sudah "approve"
+      if ($registration->status_diterima === 'approve') {
         return response()->json([
           'success' => false,
           'message' => 'Pendaftaran KTA sudah disetujui sebelumnya.',
         ], 400);
       }
 
-      // Ubah status menjadi "approved"
-      $registration->status = 'accepted';
+      // Ubah status menjadi "approve"
+      $registration->status_diterima = 'approve';
+      $registration->tanggal_diterima = now();
+
+      // Ubah status_aktif menjadi "active"
+      $registration->status_aktif = 'active';
+      $registration->expired_at = now()->addYears(2);
+
+      // Simpan perubahan
       $registration->save();
 
-      return response()->json([
-        'success' => true,
-        'message' => 'Pendaftaran KTA berhasil disetujui.',
-        'data' => $registration,
-      ], 200);
+      return response()->json(
+        [
+          'success' => true,
+          'message' => 'Pendaftaran KTA berhasil disetujui dan status aktif diubah menjadi active.',
+          'data' => $registration,
+        ],
+        200
+      );
     } catch (\Exception $e) {
       return response()->json([
         'success' => false,
@@ -209,31 +220,21 @@ class KtaController extends Controller
 
     return response()->json($kta, 200);
   }
-
+  // Fungsi untuk mencari KTA berdasarkan parameter yang ditentukan
   public function search(Request $request)
   {
     $searchTerm = $request->input('search'); // Ambil input pencarian
 
-    // Query untuk mencari KTA berdasarkan relasi user
-    $ktas = KTA::where('status', 'accepted') // Pastikan status KTA adalah accepted
-      ->whereHas('user', function ($query) use ($searchTerm) {
-        $query->where('nama_perusahaan', 'like', '%' . $searchTerm . '%')
-          ->orWhere('alamat_perusahaan', 'like', '%' . $searchTerm . '%')
-          ->orWhere('email', 'like', '%' . $searchTerm . '%');
-      })
-      ->get(); // Ambil data KTA yang memenuhi kriteria pencarian
+    $ktas = KTA::whereHas('user', function ($query) use ($searchTerm) {
+      $query->where('nama_perusahaan', 'like', '%' . $searchTerm . '%')
+        ->orWhere('alamat_perusahaan', 'like', '%' . $searchTerm . '%')
+        ->orWhere('email', 'like', '%' . $searchTerm . '%');
+    })->get(); // Query untuk mencari berdasarkan nama_perusahaan, alamat_perusahaan, dan email
 
-    // Jika tidak ada hasil pencarian
     if ($ktas->isEmpty()) {
-      return response()->json([
-        'success' => false,
-        'message' => 'KTA tidak ditemukan.'
-      ], 404); // Kembalikan 404 jika tidak ada hasil
+      return response()->json(['message' => 'KTA tidak ditemukan'], 404);
     }
 
-    return response()->json([
-      'success' => true,
-      'data' => $ktas
-    ], 200); // Kembalikan hasil pencarian
+    return response()->json($ktas);
   }
 }

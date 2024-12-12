@@ -10,10 +10,8 @@ class KTA extends Model
 {
     use HasFactory;
 
-    // Nama tabel (opsional jika tabel sesuai dengan konvensi Laravel)
     protected $table = 'ktas';
 
-    // Kolom yang dapat diisi (fillable)
     protected $fillable = [
         'formulir_permohonan',
         'pernyataan_kebenaran',
@@ -30,10 +28,13 @@ class KTA extends Model
         'kabupaten_id',
         'user_id',
         'rekening_id',
-        'status', // Status pendaftaran KTA, contoh: 'accepted', 'rejected', 'pending'
-        'status_perpanjangan_kta', // Status perpanjangan KTA, contoh: 'pending', 'approved'
-        'tanggal_diterima', // Tanggal KTA diterima
-        'komentar', // Komentar jika perpanjangan ditolak
+        'status_diterima',
+        'status_aktif',
+        'tanggal_diterima',
+        'expired_at',
+        'status_perpanjangan_kta',
+        'komentar',
+        'kta_file',
     ];
 
     // Relasi ke model KotaKabupaten
@@ -42,45 +43,56 @@ class KTA extends Model
         return $this->belongsTo(KotaKabupaten::class, 'kabupaten_id');
     }
 
-    // Relasi ke model User (yang membuat KTA)
+    // Relasi ke model User
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    // Method untuk memeriksa apakah KTA masih aktif atau sudah tidak aktif berdasarkan tanggal diterima
+    // Memeriksa apakah KTA masih aktif
     public function isActive()
     {
-        // Jika belum diterima, dianggap tidak aktif
         if (!$this->tanggal_diterima) {
             return false;
         }
-        // Menghitung apakah tanggal diterima lebih dari 1 tahun yang lalu
-        return now()->lessThanOrEqualTo(Carbon::parse($this->tanggal_diterima)->addYear());
+
+        // Jika tanggal kedaluwarsa lebih dari sekarang
+        return now()->lessThanOrEqualTo(Carbon::parse($this->expired_at));
     }
 
-    // Method untuk memperpanjang KTA
+    // Memperpanjang KTA
     public function extendKta($buktiTransfer)
     {
-        $this->status_perpanjangan_kta = 'pending'; // Status menjadi pending saat diajukan perpanjangan
-        $this->bukti_transfer = $buktiTransfer; // Simpan bukti transfer
-        $this->save(); // Simpan perubahan
+        $this->status_perpanjangan_kta = 'pending';
+        $this->bukti_transfer = $buktiTransfer;
+        $this->save();
     }
 
-    // Method untuk mengatur KTA sebagai diterima (accepted) dan menetapkan tanggal diterima
+    // Menerima KTA dan mengatur tanggal diterima
     public function acceptKta()
     {
-        $this->status = 'accepted'; // Status KTA diterima
-        $this->tanggal_diterima = now(); // Set tanggal diterima saat KTA diaktifkan
+        $this->status_diterima = 'approve';
+        $this->tanggal_diterima = now();
+        $this->status_aktif = 'active';
+        $this->expired_at = now()->addYear();
         $this->save();
     }
 
-    // Method untuk menolak KTA dengan komentar
+    // Menolak KTA dengan komentar
     public function rejectKta($komentar)
     {
-        $this->status = 'rejected'; // Status KTA ditolak
-        $this->komentar = $komentar; // Simpan komentar penolakan
+        $this->status_diterima = 'rejected';
+        $this->komentar = $komentar;
         $this->save();
+    }
+
+    // Mengatur KTA sebagai expired jika sudah melewati tanggal expired
+    public function checkExpiredStatus()
+    {
+        if ($this->expired_at && now()->greaterThan($this->expired_at)) {
+            $this->status_aktif = 'expired';
+            $this->save();
+        }
     }
 
     // Relasi ke model RekeningTujuan
@@ -89,27 +101,39 @@ class KTA extends Model
         return $this->belongsTo(RekeningTujuan::class, 'rekening_id');
     }
 
-    // Menambahkan custom accessor untuk status KTA yang lebih mudah diakses
+    // Custom accessor untuk status KTA
     public function getStatusLabelAttribute()
     {
         $labels = [
-            'accepted' => 'Diterima',
+            'approve' => 'Diterima',
             'rejected' => 'Ditolak',
             'pending' => 'Menunggu Persetujuan',
         ];
 
-        return $labels[$this->status] ?? 'Status Tidak Diketahui';
+        return $labels[$this->status_diterima] ?? 'Status Tidak Diketahui';
     }
 
-    // Menambahkan custom accessor untuk status perpanjangan KTA
+    // Custom accessor untuk status perpanjangan KTA
     public function getStatusPerpanjanganLabelAttribute()
     {
         $labels = [
             'pending' => 'Menunggu Persetujuan',
-            'approved' => 'Disetujui',
+            'approve' => 'Disetujui',
             'rejected' => 'Ditolak',
         ];
 
         return $labels[$this->status_perpanjangan_kta] ?? 'Status Tidak Diketahui';
+    }
+
+    // Custom accessor untuk status keberlanjutan KTA
+    public function getStatusAktifLabelAttribute()
+    {
+        $labels = [
+            'active' => 'Aktif',
+            'expired' => 'Kedaluwarsa',
+            'will_expire' => 'Akan Kadaluarsa',
+        ];
+
+        return $labels[$this->status_aktif] ?? 'Status Tidak Diketahui';
     }
 }

@@ -26,11 +26,15 @@ class User extends Authenticatable
     ];
     public function KTA()
     {
-        return $this->hasOne(KTA::class);
+        return $this->hasOne(KTA::class, 'user_id');
     }
 
-    public function SBURegistrations()
+    public function SBUSRegistrations()
     {
-        return $this->hasOne(SBURegistrations::class);
+        return $this->hasMany(SBURegistrations::class, 'user_id');
+    }
+    public function SBUNRegistrations()
+    {
+        return $this->hasMany(SBUNRegistrations::class, 'user_id');
     }
 }

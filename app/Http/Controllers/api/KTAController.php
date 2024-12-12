@@ -255,7 +255,7 @@ class KtaController extends Controller
 
     return response()->json($ktas);
   }
-  public function downloadKTAFiles($id, $nama_perusahaan)
+  public function downloadKTAFiles($id)
   {
     try {
       // Lokasi file user di storage disk

@@ -10,28 +10,32 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
+use Stechstudio\ZipStream\ZipStream;
 
 class KtaController extends Controller
 {
   // Fungsi untuk membuat pengajuan KTA baru
   public function store(Request $request)
   {
-    $validator = Validator::make($request->all(), [
-      'formulir_permohonan' => 'required|file',
-      'pernyataan_kebenaran' => 'required|file',
-      'pengesahan_menkumham' => 'required|file',
-      'akta_pendirian' => 'required|file',
-      'akta_perubahan' => 'nullable|file',
-      'npwp_perusahaan' => 'required|file',
-      'surat_domisili' => 'required|file',
-      'ktp_pengurus' => 'required|file',
-      'logo' => 'nullable|file',
-      'foto_direktur' => 'nullable|file',
-      'npwp_pengurus_akta' => 'required|file',
-      'bukti_transfer' => 'required|file',
-      'rekening_id' => 'required|integer',
-      'kabupaten_id' => 'required|integer',
-    ]);
+    $validator = Validator::make(
+      $request->all(),
+      [
+        'formulir_permohonan' => 'required|file',
+        'pernyataan_kebenaran' => 'required|file',
+        'pengesahan_menkumham' => 'required|file',
+        'akta_pendirian' => 'required|file',
+        'akta_perubahan' => 'nullable|file',
+        'npwp_perusahaan' => 'required|file',
+        'surat_domisili' => 'required|file',
+        'ktp_pengurus' => 'required|file',
+        'logo' => 'nullable|file',
+        'foto_direktur' => 'nullable|file',
+        'npwp_pengurus_akta' => 'required|file',
+        'bukti_transfer' => 'required|file',
+        'rekening_id' => 'required|integer',
+        'kabupaten_id' => 'required|integer',
+      ]
+    );
 
     if ($validator->fails()) {
       return response()->json(['message' => 'Validation error', 'errors' => $validator->errors()], 422);
@@ -42,6 +46,10 @@ class KtaController extends Controller
         'kabupaten_id',
         'rekening_id',
       ]);
+
+      // Menentukan direktori berdasarkan user_id
+      $userId = Auth::id();
+      $basePath = "kta/{$userId}"; // Path untuk user
 
       $fileFields = [
         'formulir_permohonan',
@@ -55,19 +63,18 @@ class KtaController extends Controller
         'logo',
         'foto_direktur',
         'npwp_pengurus_akta',
-        'bukti_transfer',
-        'kabupaten_id',
-        'rekening_id'
+        'bukti_transfer'
       ];
 
       foreach ($fileFields as $field) {
         if ($request->hasFile($field)) {
-          $data[$field] = $request->file($field)->store("documents/{$field}", 'public');
+          // Menyimpan file di dalam folder user_id di disk storage
+          $data[$field] = $request->file($field)->store("kta/{$userId}", 'local');
         }
       }
 
       // Menambahkan user_id
-      $data['user_id'] = Auth::id();
+      $data['user_id'] = $userId;
 
       // Menyimpan pengajuan KTA
       $kta = KTA::create($data);
@@ -164,7 +171,15 @@ class KtaController extends Controller
   {
     try {
       // Cari pendaftaran KTA berdasarkan ID
-      $registration = KTA::findOrFail($id);
+      $registration = KTA::find($id);
+
+      // Jika pendaftaran KTA tidak ditemukan
+      if (!$registration) {
+        return response()->json([
+          'success' => false,
+          'message' => 'Pendaftaran KTA tidak ditemukan.',
+        ], 404);
+      }
 
       // Periksa apakah status sudah "approve"
       if ($registration->status_diterima === 'approve') {
@@ -180,6 +195,8 @@ class KtaController extends Controller
 
       // Ubah status_aktif menjadi "active"
       $registration->status_aktif = 'active';
+
+      // Set tanggal expired untuk 2 tahun ke depan
       $registration->expired_at = now()->addYears(2);
 
       // Simpan perubahan
@@ -201,6 +218,7 @@ class KtaController extends Controller
       ], 500);
     }
   }
+
 
   // Fungsi untuk mendapatkan semua data KTA
   public function index()
@@ -236,5 +254,60 @@ class KtaController extends Controller
     }
 
     return response()->json($ktas);
+  }
+  public function downloadKTAFiles($id, $nama_perusahaan)
+  {
+    try {
+      // Lokasi file user di storage disk
+      $directoryPath = "kta/{$id}"; // Pastikan sesuai dengan struktur folder yang benar
+
+      // Periksa apakah folder user ada di storage lokal
+      if (!Storage::disk('local')->exists($directoryPath)) {
+        return response()->json([
+          'success' => false,
+          'message' => 'Berkas untuk user ini tidak ditemukan',
+        ], 404);
+      }
+
+      // Ambil semua file dalam folder user
+      $files = Storage::disk('local')->files($directoryPath);
+
+      if (empty($files)) {
+        return response()->json([
+          'success' => false,
+          'message' => 'Folder tidak mengandung berkas',
+        ], 404);
+      }
+
+      // Nama file ZIP
+      $zipFileName = "kta_files_{$id}.zip";
+
+      // Set HTTP header untuk file ZIP
+      $headers = [
+        'Content-Type' => 'application/octet-stream',
+        'Content-Disposition' => "attachment; filename={$zipFileName}",
+      ];
+
+      // Streaming ZIP ke browser
+      return response()->stream(function () use ($files) {
+        // Menggunakan ZipStream untuk membuat file ZIP
+        $zip = new \ZipStream\ZipStream();
+
+        foreach ($files as $file) {
+          // Mendapatkan path file di storage lokal
+          $filePath = storage_path("app/{$file}");
+          $zip->addFileFromPath(basename($file), $filePath);
+        }
+
+        // Menyelesaikan proses ZIP
+        $zip->finish();
+      }, 200, $headers);
+    } catch (\Exception $e) {
+      return response()->json([
+        'success' => false,
+        'message' => 'Terjadi kesalahan saat mengunduh berkas KTA',
+        'error' => $e->getMessage(),
+      ], 500);
+    }
   }
 }

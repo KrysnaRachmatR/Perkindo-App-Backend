@@ -185,4 +185,8 @@ return [
         // 'Example' => App\Facades\Example::class,
     ])->toArray(),
 
+
+    Barryvdh\DomPDF\ServiceProvider::class,
+
+
 ];

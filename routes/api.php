@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\SbusRegistrationController;
 use App\Http\Controllers\Api\RekeningController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SbunRegistrationController;
+use App\Http\Controllers\Api\UserDetailController;
 
 Route::get('/kota-kabupaten', [KotaKabupatenController::class, 'index']);
 
@@ -38,12 +39,12 @@ Route::get('/profile', [ProfileController::class, 'getProfile']);
 Route::get('/agenda', [AgendaController::class, 'index']);
 Route::get('/agendas/{id}', [AgendaController::class, 'show']);
 
-
-
 // Middleware untuk Admin Only
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     // Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    Route::get('/detail', [UserDetailController::class, 'index']);
 
     //Search Fitur
     Route::get('/sbu/search', [SbusRegistrationController::class, 'search']);
@@ -55,6 +56,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/kta/{id}', [KtaController::class, 'show']);
     Route::post('kta/{id}/approval', [KtaController::class, 'approveOrReject']);
     Route::put('/kta/approve/{id}', [KTAController::class, 'approveKTA']);
+    Route::get('/download-kta/{ktaId}', [KtaController::class, 'downloadKTAFiles']);
 
     //Validasi SBU Konstruksi
     Route::get('/sbu', [SbusRegistrationController::class, 'index']);

@@ -241,19 +241,38 @@ class SbunRegistrationController extends Controller
 
   public function search(Request $request)
   {
-    $searchTerm = $request->input('search');
+    try {
+      $searchTerm = $request->input('search');
 
-    $registrations = SbunRegistration::where('approval_status', 'approved')
-      ->whereHas('user', function ($query) use ($searchTerm) {
-        $query->where('nama_perusahaan', 'like', '%' . $searchTerm . '%')
-          ->orWhere('email', 'like', '%' . $searchTerm . '%');
-      })
-      ->get();
+      // Validasi input pencarian
+      if (!$searchTerm) {
+        return response()->json(['message' => 'Parameter pencarian tidak diberikan.'], 400);
+      }
 
-    if ($registrations->isEmpty()) {
-      return response()->json(['message' => 'SBU tidak ditemukan.'], 404);
+      // Cari registrasi yang diterima dan filter berdasarkan nama perusahaan atau email
+      $registrations = SbunRegistration::where('status_aktif', 'active')
+        ->whereHas('user', function ($query) use ($searchTerm) {
+          $query->where('nama_perusahaan', 'like', '%' . $searchTerm . '%')
+            ->orWhere('email', 'like', '%' . $searchTerm . '%');
+        })
+        ->with('user') // Mengambil relasi user untuk data yang lebih lengkap
+        ->get();
+
+      if ($registrations->isEmpty()) {
+        return response()->json(['message' => 'SBU tidak ditemukan.'], 404);
+      }
+
+      // Mengembalikan data registrasi dalam format JSON
+      return response()->json([
+        'message' => 'Data ditemukan.',
+        'data' => $registrations
+      ], 200);
+    } catch (\Exception $e) {
+      // Menangani error jika terjadi kesalahan
+      return response()->json([
+        'message' => 'Terjadi kesalahan.',
+        'error' => $e->getMessage(),
+      ], 500);
     }
-
-    return response()->json($registrations, 200);
   }
 }

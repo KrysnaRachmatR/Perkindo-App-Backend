@@ -64,8 +64,8 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::put('/sbu/{id}/status', [SbusRegistrationController::class, 'status']);
     Route::get('/sbus/documents/download/{id}', [SbusRegistrationController::class, 'downloadSBUSDocuments']);
 
-
     //Validasi SBU Non Konstruksi
+    Route::get('/sbun/search', [SbunRegistrationController::class, 'search']);
     Route::get('/sbun', [SbunRegistrationController::class, 'index']);
     Route::get('/sbun/{id}', [SbunRegistrationController::class, 'show']);
     Route::put('/sbun/{id}/status', [SbunRegistrationController::class, 'status']);

@@ -58,10 +58,12 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/download-kta/{ktaId}', [KtaController::class, 'downloadKTAFiles']);
 
     //Validasi SBU Konstruksi
+    Route::get('/sbus/search', [SbusRegistrationController::class, 'search']);
     Route::get('/sbu', [SbusRegistrationController::class, 'index']);
     Route::get('/sbu/{id}', [SbusRegistrationController::class, 'show']);
     Route::put('/sbu/{id}/status', [SbusRegistrationController::class, 'status']);
-    Route::delete('/sbu/{id}', [SbusRegistrationController::class, 'destroy']);
+    Route::get('/sbus/documents/download/{id}', [SbusRegistrationController::class, 'downloadSBUSDocuments']);
+
 
     //Validasi SBU Non Konstruksi
     Route::get('/sbun', [SbunRegistrationController::class, 'index']);

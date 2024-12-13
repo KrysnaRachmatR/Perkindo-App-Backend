@@ -5,11 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class SBUNRegistrations extends Model
+class SbunRegistration extends Model
 {
     use HasFactory;
-    protected $table = 'sbun_registrations';
 
+    // Nama tabel yang terkait dengan model ini
+    protected $table = 'sbun_registration';
+
+    // Kolom yang bisa diisi (fillable)
     protected $fillable = [
         'user_id',
         'non_konstruksi_klasifikasi_id',
@@ -17,8 +20,6 @@ class SBUNRegistrations extends Model
         'akta_pendirian',
         'npwp_perusahaan',
         'ktp_penanggung_jawab',
-        'npwp_penanggung_jawab',
-        'foto_penanggung_jawab',
         'nomor_hp_penanggung_jawab',
         'ktp_pemegang_saham',
         'npwp_pemegang_saham',
@@ -26,33 +27,34 @@ class SBUNRegistrations extends Model
         'logo_perusahaan',
         'rekening_id',
         'bukti_transfer',
+        'status_diterima',
         'status_aktif',
+        'tanggal_diterima',
         'expired_at',
-        'approval_status'
+        'status_perpanjangan_sbun',
+        'komentar',
     ];
 
-    protected $casts = [
-        'approval_status' => 'string',
-        'admin_comment' => 'string',
-        'expiration_date' => 'datetime',
-    ];
-
+    // Relasi dengan model User
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    public function non_konstruksi_klasifikasi()
+    // Relasi dengan model NonKonstruksiKlasifikasi
+    public function nonKonstruksiKlasifikasi()
     {
         return $this->belongsTo(NonKonstruksiKlasifikasi::class, 'non_konstruksi_klasifikasi_id');
     }
 
-    public function non_konstruksi_sub_klasifikasi()
+    // Relasi dengan model NonKonstruksiSubKlasifikasi
+    public function nonKonstruksiSubKlasifikasi()
     {
         return $this->belongsTo(NonKonstruksiSubKlasifikasi::class, 'non_konstruksi_sub_klasifikasi_id');
     }
 
-    public function rekeningTujuan()
+    // Relasi dengan model RekeningTujuan
+    public function rekening()
     {
         return $this->belongsTo(RekeningTujuan::class, 'rekening_id');
     }

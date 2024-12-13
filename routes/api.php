@@ -9,7 +9,6 @@ use App\Http\Controllers\Api\KtaController;
 use App\Http\Controllers\Api\SubKlasifikasiController;
 use App\Http\Controllers\Api\NonKonstruksiKlasifikasiController;
 use App\Http\Controllers\Api\NonKonstruksiSubKlasifikasiController;
-use App\Http\Controllers\Api\InstagramController;
 use App\Http\Controllers\Api\AgendaController;
 use App\Http\Controllers\Api\BeritaController;
 use App\Http\Controllers\Api\GaleriController;
@@ -68,6 +67,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/sbun', [SbunRegistrationController::class, 'index']);
     Route::get('/sbun/{id}', [SbunRegistrationController::class, 'show']);
     Route::put('/sbun/{id}/status', [SbunRegistrationController::class, 'status']);
+    Route::get('/sbun/{id}/download', [SbunRegistrationController::class, 'downloadSBUNDocuments']);
 
     //Rekening Tujuan Routes
     Route::get('/rek', [RekeningController::class, 'index']);

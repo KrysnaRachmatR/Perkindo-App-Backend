@@ -59,7 +59,7 @@ class RekeningController extends Controller
 
     $validatedData = $request->validate([
       'nama_bank' => 'nullable|string|max:100',
-      'nomor_rekening' => 'nullable|string|max:50|unique:rekening_tujuans,nomor_rekening,' . $rekening->id,
+      'nomor_rekening' => 'nullable|string|max:50' . $rekening->id,
       'atas_nama' => 'nullable|string|max:100',
     ]);
 

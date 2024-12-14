@@ -45,13 +45,15 @@ class GaleriController extends Controller
             $galeri = new Galeri();
             $galeri->judul = $request->judul;
             $galeri->caption = $request->caption;
+            $galeri->save(); // Simpan dulu untuk mendapatkan ID
 
             if ($request->hasFile('gambar')) {
-                $path = $request->file('gambar')->store('galeri', 'public');
+                // Direktori berdasarkan ID
+                $directory = "galeri/{$galeri->id}";
+                $path = $request->file('gambar')->store($directory, 'public');
                 $galeri->gambar = $path;
+                $galeri->save(); // Simpan ulang dengan path gambar
             }
-
-            $galeri->save();
 
             return response()->json([
                 'message' => 'Data created successfully',
@@ -65,7 +67,7 @@ class GaleriController extends Controller
         }
     }
 
-    // Update a galeri
+    // Update galeri
     public function update(Request $request, $id)
     {
         try {
@@ -86,10 +88,14 @@ class GaleriController extends Controller
             $galeri->caption = $request->caption ?? $galeri->caption;
 
             if ($request->hasFile('gambar')) {
+                // Hapus gambar lama jika ada
                 if ($galeri->gambar && Storage::disk('public')->exists($galeri->gambar)) {
                     Storage::disk('public')->delete($galeri->gambar);
                 }
-                $path = $request->file('gambar')->store('galeri', 'public');
+
+                // Simpan gambar ke direktori berdasarkan ID
+                $directory = "galeri/{$galeri->id}";
+                $path = $request->file('gambar')->store($directory, 'public');
                 $galeri->gambar = $path;
             }
 
@@ -113,14 +119,16 @@ class GaleriController extends Controller
         }
     }
 
-    // Delete a galeri
+    // Delete galeri
     public function destroy($id)
     {
         try {
             $galeri = Galeri::findOrFail($id);
 
-            if ($galeri->gambar && Storage::disk('public')->exists($galeri->gambar)) {
-                Storage::disk('public')->delete($galeri->gambar);
+            // Hapus folder direktori terkait ID
+            $directory = "galeri/{$galeri->id}";
+            if (Storage::disk('public')->exists($directory)) {
+                Storage::disk('public')->deleteDirectory($directory);
             }
 
             $galeri->delete();

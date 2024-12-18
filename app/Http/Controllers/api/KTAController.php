@@ -7,14 +7,15 @@ use App\Models\KTA;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
-use Stechstudio\ZipStream\ZipStream;
+use ZipStream\ZipStream;
 
 class KtaController extends Controller
 {
-  // Fungsi untuk membuat pengajuan KTA baru
+  // ----------USER CONTROLLER----------\\
   public function store(Request $request)
   {
     $validator = Validator::make(
@@ -141,6 +142,20 @@ class KtaController extends Controller
     return response()->json(['message' => 'Perpanjangan KTA berhasil diajukan.'], 200);
   }
 
+
+  // 
+  //*//
+  //*//
+  //*//
+  //*//
+  //*//
+  //*//
+  //*//
+  //
+
+  // ----------ADMIN CONTROLLER----------\\
+
+
   // Fungsi untuk menyetujui atau menolak perpanjangan KTA
   public function approveOrReject(Request $request, $id)
   {
@@ -166,61 +181,93 @@ class KtaController extends Controller
       'kta' => $kta
     ]);
   }
+
   // Fungsi untuk menyetujui KTA
-  public function approveKTA($id)
-  {
+  public function approveKTA(
+    Request $request,
+    $id
+  ) {
     try {
+      // Validasi input
+      $validated = $request->validate([
+        'status_diterima' => 'required|in:approve,rejected',
+        'komentar' => 'nullable|string|max:255', // Komentar maksimal 255 karakter
+      ]);
+
       // Cari pendaftaran KTA berdasarkan ID
-      $registration = KTA::find($id);
+      $ktaRegistration = KTA::find($id);
 
       // Jika pendaftaran KTA tidak ditemukan
-      if (!$registration) {
+      if (!$ktaRegistration) {
         return response()->json([
           'success' => false,
           'message' => 'Pendaftaran KTA tidak ditemukan.',
         ], 404);
       }
 
-      // Periksa apakah status sudah "approve"
-      if ($registration->status_diterima === 'approve') {
+      // Proses jika status adalah "approve"
+      if ($validated['status_diterima'] === 'approve') {
+        // Periksa apakah sudah disetujui sebelumnya
+        if ($ktaRegistration->status_diterima === 'approve') {
+          return response()->json([
+            'success' => false,
+            'message' => 'Pendaftaran KTA sudah disetujui sebelumnya.',
+          ], 400);
+        }
+
+        // Perbarui status ke "approve"
+        $ktaRegistration->status_diterima = 'approve';
+        $ktaRegistration->tanggal_diterima = now();
+        $ktaRegistration->status_aktif = 'active';
+        $ktaRegistration->expired_at = now()->addYears(2); // Berlaku 2 tahun
+        $ktaRegistration->save();
+
         return response()->json([
-          'success' => false,
-          'message' => 'Pendaftaran KTA sudah disetujui sebelumnya.',
-        ], 400);
+          'success' => true,
+          'message' => 'Pendaftaran KTA berhasil disetujui.',
+          'data' => $ktaRegistration,
+        ], 200);
       }
 
-      // Ubah status menjadi "approve"
-      $registration->status_diterima = 'approve';
-      $registration->tanggal_diterima = now();
+      // Proses jika status adalah "rejected"
+      if ($validated['status_diterima'] === 'rejected') {
+        // Cek apakah status sudah aktif dan disetujui
+        if (
+          $ktaRegistration->status_aktif === 'active' && $ktaRegistration->status_diterima === 'approve'
+        ) {
+          return response()->json([
+            'success' => false,
+            'message' => 'Pendaftaran KTA yang sudah disetujui dan aktif tidak bisa ditolak.',
+          ], 400);
+        }
 
-      // Ubah status_aktif menjadi "active"
-      $registration->status_aktif = 'active';
+        // Perbarui status ke "rejected" dan tambahkan komentar
+        $ktaRegistration->status_diterima = 'rejected';
+        $ktaRegistration->komentar = $validated['komentar'];
+        $ktaRegistration->save();
 
-      // Set tanggal expired untuk 2 tahun ke depan
-      $registration->expired_at = now()->addYears(2);
-
-      // Simpan perubahan
-      $registration->save();
-
-      return response()->json(
-        [
+        return response()->json([
           'success' => true,
-          'message' => 'Pendaftaran KTA berhasil disetujui dan status aktif diubah menjadi active.',
-          'data' => $registration,
-        ],
-        200
-      );
-    } catch (\Exception $e) {
+          'message' => 'Pendaftaran KTA berhasil ditolak.',
+        ], 200);
+      }
+    } catch (\Illuminate\Validation\ValidationException $validationException) {
+      // Tangani kesalahan validasi
       return response()->json([
         'success' => false,
-        'message' => 'Terjadi kesalahan saat menyetujui pendaftaran KTA.',
-        'error' => $e->getMessage(),
+        'message' => 'Validasi gagal.',
+        'errors' => $validationException->errors(),
+      ], 422);
+    } catch (\Exception $exception) {
+      // Tangani kesalahan umum
+      return response()->json([
+        'success' => false,
+        'message' => 'Terjadi kesalahan saat memperbarui status pendaftaran KTA.',
+        'error' => $exception->getMessage(),
       ], 500);
     }
   }
 
-
-  // Fungsi untuk mendapatkan semua data KTA
   public function index()
   {
     $ktas = KTA::with('user')->get();
@@ -255,59 +302,71 @@ class KtaController extends Controller
 
     return response()->json($ktas);
   }
-  public function downloadKTAFiles($id)
+  public function downloadKTAFiles(Request $request, $id)
   {
     try {
-      // Lokasi file user di storage disk
-      $directoryPath = "kta/{$id}"; // Pastikan sesuai dengan struktur folder yang benar
+      // Lokasi folder file KTA berdasarkan ID KTA
+      $directoryPath = "kta/{$id}"; // Menggunakan ktaId untuk folder path
 
-      // Periksa apakah folder user ada di storage lokal
+      // Verifikasi apakah folder KTA ada di storage lokal
       if (!Storage::disk('local')->exists($directoryPath)) {
         return response()->json([
           'success' => false,
-          'message' => 'Berkas untuk user ini tidak ditemukan',
+          'message' => 'Berkas untuk KTA ini tidak ditemukan.',
         ], 404);
       }
 
-      // Ambil semua file dalam folder user
+      // Ambil semua file dalam folder KTA
       $files = Storage::disk('local')->files($directoryPath);
 
+      // Jika folder tidak mengandung file
       if (empty($files)) {
         return response()->json([
           'success' => false,
-          'message' => 'Folder tidak mengandung berkas',
+          'message' => 'Folder tidak mengandung berkas.',
         ], 404);
       }
 
       // Nama file ZIP
       $zipFileName = "kta_files_{$id}.zip";
 
-      // Set HTTP header untuk file ZIP
-      $headers = [
-        'Content-Type' => 'application/octet-stream',
-        'Content-Disposition' => "attachment; filename={$zipFileName}",
-      ];
-
-      // Streaming ZIP ke browser
+      // Membuat ZIP dan streaming ke browser
       return response()->stream(function () use ($files) {
-        // Menggunakan ZipStream untuk membuat file ZIP
-        $zip = new \ZipStream\ZipStream();
+        try {
+          // Membuat objek ZipStream
+          $zip = new ZipStream();
 
-        foreach ($files as $file) {
-          // Mendapatkan path file di storage lokal
-          $filePath = storage_path("app/{$file}");
-          $zip->addFileFromPath(basename($file), $filePath);
+          foreach ($files as $file) {
+            // Mendapatkan path file di storage lokal
+            $filePath = storage_path("app/{$file}");
+
+            // Validasi apakah file ada
+            if (!file_exists($filePath)) {
+              Log::warning("File tidak ditemukan: {$filePath}");
+              continue; // Skip jika file tidak ada
+            }
+
+            // Tambahkan file ke ZIP (pastikan nama file tanpa path penuh)
+            $zip->addFileFromPath(basename($file), $filePath);
+          }
+
+          // Menyelesaikan proses ZIP
+          $zip->finish();
+        } catch (\Exception $e) {
+          Log::error('Error creating ZIP file: ' . $e->getMessage());
+          throw $e; // Throw exception untuk ditangani oleh blok catch utama
         }
-
-        // Menyelesaikan proses ZIP
-        $zip->finish();
-      }, 200, $headers);
+      }, 200, [
+        'Content-Type' => 'application/zip',
+        'Content-Disposition' => 'attachment; filename="' . $zipFileName . '"',
+      ]);
     } catch (\Exception $e) {
+      // Log kesalahan dan kembalikan response error
+      Log::error('Error downloading KTA files for KTA ' . $id . ': ' . $e->getMessage());
       return response()->json([
         'success' => false,
-        'message' => 'Terjadi kesalahan saat mengunduh berkas KTA',
-        'error' => $e->getMessage(),
-      ], 500);
+        'message' => 'Berkas untuk KTA ini tidak ditemukan.',
+      ], 404);
     }
   }
 }

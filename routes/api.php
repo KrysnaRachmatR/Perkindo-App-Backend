@@ -19,8 +19,10 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SbunRegistrationController;
 use App\Http\Controllers\Api\UserDetailController;
 
+Route::post('/kta/send/{$id}', [KtaController::class, 'uploadKTAFile']);
+
+Route::get('/kta/{id}', [KtaController::class, 'show']);
 Route::get('/kota-kabupaten', [KotaKabupatenController::class, 'index']);
-Route::get('/download-kta/{userId}', [KtaController::class, 'downloadKTAFiles']);
 // Route Auth (Login & Register)
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/register', [AuthController::class, 'register'])->name('register');
@@ -51,9 +53,11 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/sbun/search', [SbunRegistrationController::class, 'search']);
 
     //Validasi KTA
-    Route::get('/kta', [KtaController::class, 'index'])->name('admin.kta.index');
-    Route::get('/kta/{id}', [KtaController::class, 'show']);
+
+    Route::get('/kta', [KtaController::class, 'index']);
+
     Route::put('/kta/approve/{id}', [KTAController::class, 'approveKTA']);
+    Route::get('/download-kta/{userId}', [KtaController::class, 'downloadKTAFiles']);
 
 
     //Validasi SBU Konstruksi

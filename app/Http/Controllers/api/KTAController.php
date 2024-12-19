@@ -69,8 +69,9 @@ class KtaController extends Controller
 
       foreach ($fileFields as $field) {
         if ($request->hasFile($field)) {
-          // Menyimpan file di dalam folder user_id di disk storage
-          $data[$field] = $request->file($field)->store("kta/{$userId}", 'local');
+          // Menyimpan file dengan nama asli ke dalam folder user_id di disk storage
+          $originalName = $request->file($field)->getClientOriginalName();
+          $data[$field] = $request->file($field)->storeAs($basePath, $originalName, 'local');
         }
       }
 
@@ -86,32 +87,6 @@ class KtaController extends Controller
     }
   }
 
-  // Fungsi untuk menghapus file yang terkait dengan KTA jika ditolak
-  protected function deleteFiles($kta)
-  {
-    $fileFields = [
-      'formulir_permohonan',
-      'pernyataan_kebenaran',
-      'pengesahan_menkumham',
-      'akta_pendirian',
-      'akta_perubahan',
-      'npwp_perusahaan',
-      'surat_domisili',
-      'ktp_pengurus',
-      'logo',
-      'foto_direktur',
-      'npwp_pengurus_akta',
-      'bukti_transfer',
-      'kabupaten_id',
-      'rekening_id'
-    ];
-
-    foreach ($fileFields as $field) {
-      if ($kta->$field && Storage::disk('public')->exists($kta->$field)) {
-        Storage::disk('public')->delete($kta->$field);
-      }
-    }
-  }
 
   // Fungsi untuk memperpanjang KTA
   public function extend(Request $request, $id)
@@ -183,10 +158,8 @@ class KtaController extends Controller
   }
 
   // Fungsi untuk menyetujui KTA
-  public function approveKTA(
-    Request $request,
-    $id
-  ) {
+  public function approveKTA(Request $request, $id)
+  {
     try {
       // Validasi input
       $validated = $request->validate([
@@ -241,14 +214,26 @@ class KtaController extends Controller
           ], 400);
         }
 
-        // Perbarui status ke "rejected" dan tambahkan komentar
-        $ktaRegistration->status_diterima = 'rejected';
-        $ktaRegistration->komentar = $validated['komentar'];
-        $ktaRegistration->save();
+        // Hapus file yang diunggah oleh user di storage/app/kta/$id_user
+        $userId = $ktaRegistration->user_id;
+        $userDirectory = storage_path("app/kta/{$userId}");
+
+        if (is_dir($userDirectory)) {
+          $files = glob($userDirectory . '/*'); // Dapatkan semua file dalam direktori
+          foreach ($files as $file) {
+            if (is_file($file)) {
+              unlink($file); // Hapus file
+            }
+          }
+          rmdir($userDirectory); // Hapus direktori setelah file dihapus
+        }
+
+        // Hapus data pendaftaran KTA dari database
+        $ktaRegistration->delete();
 
         return response()->json([
           'success' => true,
-          'message' => 'Pendaftaran KTA berhasil ditolak.',
+          'message' => 'Pendaftaran KTA berhasil ditolak dan datanya telah dihapus.',
         ], 200);
       }
     } catch (\Illuminate\Validation\ValidationException $validationException) {
@@ -268,23 +253,56 @@ class KtaController extends Controller
     }
   }
 
+
   public function index()
   {
-    $ktas = KTA::with('user')->get();
+    $ktas = KTA::select(
+      'users.nama_perusahaan',
+      'users.nama_direktur',
+      'users.alamat_perusahaan',
+      'users.email',
+      'ktas.logo',
+      'ktas.status_aktif',
+      'ktas.tanggal_diterima',
+      'ktas.expired_at',
+      'kota_kabupaten.nama as kota_kabupaten'
+    )
+      ->join('users', 'ktas.user_id', '=', 'users.id')
+      ->join('kota_kabupaten', 'ktas.kabupaten_id', '=', 'kota_kabupaten.id')
+      ->where('ktas.status_diterima', 'approve')
+      ->get();
+
     return response()->json($ktas);
   }
 
   // Fungsi untuk mendapatkan detail KTA berdasarkan ID
   public function show($id)
   {
-    $kta = KTA::find($id);
+    $kta = KTA::select(
+      'users.nama_perusahaan',
+      'users.nama_direktur',
+      'users.nama_penanggung_jawab',
+      'users.alamat_perusahaan',
+      'users.email',
+      'ktas.logo',
+      'ktas.status_aktif',
+      'ktas.tanggal_diterima',
+      'ktas.expired_at',
+      'kota_kabupaten.nama as kota_kabupaten'
+    )
+      ->join('users', 'ktas.user_id', '=', 'users.id')
+      ->join('kota_kabupaten', 'ktas.kabupaten_id', '=', 'kota_kabupaten.id')
+      ->where('ktas.id', $id)
+      ->where('ktas.status_diterima', 'approve')
+      ->first();
 
     if (!$kta) {
-      return response()->json(['message' => 'KTA not found'], 404);
+      return response()->json(['message' => 'KTA not found or not approved'], 404);
     }
 
     return response()->json($kta, 200);
   }
+
   // Fungsi untuk mencari KTA berdasarkan parameter yang ditentukan
   public function search(Request $request)
   {
@@ -368,5 +386,27 @@ class KtaController extends Controller
         'message' => 'Berkas untuk KTA ini tidak ditemukan.',
       ], 404);
     }
+  }
+
+  public function uploadKTAFile(Request $request, $userId)
+  {
+    // Validasi file yang diunggah
+    $request->validate([
+      'kta_file' => 'required|mimes:pdf,jpeg,png,jpg|max:2048', // Menentukan tipe file
+    ]);
+
+    $user = User::findOrFail($userId);
+
+    // Mengunggah file dan menyimpannya di storage
+    if ($request->hasFile('kta_file')) {
+      $file = $request->file('kta_file');
+      $filePath = $file->storeAs('kta_files', 'kta_' . $user->id . '.' . $file->getClientOriginalExtension());
+
+      // Menyimpan path file di database
+      $user->kta_file = $filePath;
+      $user->save();
+    }
+
+    return response()->json(['message' => 'File KTA berhasil diunggah!']);
   }
 }

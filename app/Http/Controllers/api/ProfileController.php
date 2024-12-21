@@ -21,6 +21,7 @@ class ProfileController extends Controller
 
     return response()->json([
       'success' => true,
+
       'data' => $profileContent,
     ]);
   }
@@ -36,7 +37,7 @@ class ProfileController extends Controller
     ]);
     $imagePath = null;
     if ($request->hasFile('header_image')) {
-      $imagePath = $request->file('header_image')->store('images', 'public');
+      $imagePath = $request->file('header_image')->store('images/profile', 'public');
     }
     $profile = ProfileContent::create([
       'header_image' => $imagePath,
@@ -56,16 +57,12 @@ class ProfileController extends Controller
   {
     $profileContent = ProfileContent::findOrFail($id);
     $data = $request->validate([
-      'header_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
       'title' => 'required|string|max:255',
       'section1' => 'required|string',
       'visi' => 'required|string',
       'misi' => 'required|array',
     ]);
-    if ($request->hasFile('header_image')) {
-      $imagePath = $request->file('header_image')->store('images', 'public');
-      $data['header_image'] = $imagePath;
-    }
+
     $profileContent->update($data);
     return response()->json([
       'success' => true,
@@ -73,6 +70,8 @@ class ProfileController extends Controller
       'data' => $profileContent,
     ]);
   }
+
+  
 
   public function destroy($id)
   {

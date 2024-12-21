@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Member;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -23,7 +24,7 @@ class MemberRegistrationController extends Controller
         ]);
 
         // Buat anggota baru
-        $member = Member::create([
+        $member = User::create([
             'nama_perusahaan' => $request->nama_perusahaan,
             'nama_direktur' => $request->nama_direktur,
             'nama_penanggung_jawab' => $request->nama_penanggung_jawab,

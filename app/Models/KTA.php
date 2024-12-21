@@ -35,6 +35,14 @@ class KTA extends Model
         'status_perpanjangan_kta',
         'komentar',
         'kta_file',
+        'can_reapply',
+        'rejection_reason',
+        'rejection_date'
+    ];
+
+    protected $cast = [
+        'can_reapply' => 'boolean',
+        'rejection_date' => 'date'
     ];
 
     // Relasi ke model KotaKabupaten

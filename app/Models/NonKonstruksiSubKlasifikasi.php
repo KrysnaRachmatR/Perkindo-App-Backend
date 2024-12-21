@@ -30,6 +30,6 @@ class NonKonstruksiSubKlasifikasi extends Model
 
     public function sbusRegistrations()
     {
-        return $this->hasMany(SBUNRegistrations::class);
+        return $this->hasMany(SBUNRegistration::class);
     }
 }

@@ -19,9 +19,6 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SbunRegistrationController;
 use App\Http\Controllers\Api\UserDetailController;
 
-Route::post('/kta/send/{$id}', [KtaController::class, 'uploadKTAFile']);
-
-Route::get('/kta/{id}', [KtaController::class, 'show']);
 Route::get('/kota-kabupaten', [KotaKabupatenController::class, 'index']);
 // Route Auth (Login & Register)
 Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -53,14 +50,15 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/sbun/search', [SbunRegistrationController::class, 'search']);
 
     //Validasi KTA
-
+    Route::get('/kta/all-pending', [KtaController::class, 'allPending']);
     Route::get('/kta', [KtaController::class, 'index']);
-
+    Route::get('/kta/{id}', [KtaController::class, 'show']);
     Route::put('/kta/approve/{id}', [KTAController::class, 'approveKTA']);
     Route::get('/download-kta/{userId}', [KtaController::class, 'downloadKTAFiles']);
 
-
     //Validasi SBU Konstruksi
+    Route::get('/sbun/all-pending', [SbunRegistrationController::class, 'allPending']);
+    Route::get('/sbun/all-active', [SbunRegistrationController::class, 'allActive']);
     Route::get('/sbus/search', [SbusRegistrationController::class, 'search']);
     Route::get('/sbu', [SbusRegistrationController::class, 'index']);
     Route::get('/sbu/{id}', [SbusRegistrationController::class, 'show']);
@@ -97,7 +95,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::delete('klasifikasis/{id}', [KlasifikasiController::class, 'destroy']);
 
     // Klasifikasi Non Konstruksi Routes
-    Route::get('non-konstruksi/klasifikasis', [NonKonstruksiKlasifikasiController::class, 'indexWithSubKlasifikasiAndCodes']);
+    Route::get('/non-konstruksi/klasifikasi', [NonKonstruksiKlasifikasiController::class, 'hancok']);
     Route::post('non-konstruksi/klasifikasis', [NonKonstruksiKlasifikasiController::class, 'store']);
     Route::get('non-konstruksi/klasifikasis/{id}', [NonKonstruksiKlasifikasiController::class, 'show']);
     Route::put('non-konstruksi/klasifikasis/{id}', [NonKonstruksiKlasifikasiController::class, 'update']);

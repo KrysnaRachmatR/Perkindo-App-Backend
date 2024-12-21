@@ -18,6 +18,7 @@ class KtaController extends Controller
   // ----------USER CONTROLLER----------\\
   public function store(Request $request)
   {
+    // Validasi input
     $validator = Validator::make(
       $request->all(),
       [
@@ -38,11 +39,13 @@ class KtaController extends Controller
       ]
     );
 
+    // Jika validasi gagal
     if ($validator->fails()) {
       return response()->json(['message' => 'Validation error', 'errors' => $validator->errors()], 422);
     }
 
     try {
+      // Mengambil data yang diperlukan dari request
       $data = $request->only([
         'kabupaten_id',
         'rekening_id',
@@ -52,6 +55,7 @@ class KtaController extends Controller
       $userId = Auth::id();
       $basePath = "kta/{$userId}"; // Path untuk user
 
+      // Daftar field yang menyimpan file
       $fileFields = [
         'formulir_permohonan',
         'pernyataan_kebenaran',
@@ -67,6 +71,7 @@ class KtaController extends Controller
         'bukti_transfer'
       ];
 
+      // Memeriksa dan menyimpan file yang ada
       foreach ($fileFields as $field) {
         if ($request->hasFile($field)) {
           // Menyimpan file dengan nama asli ke dalam folder user_id di disk storage
@@ -75,17 +80,28 @@ class KtaController extends Controller
         }
       }
 
-      // Menambahkan user_id
+      // Menambahkan user_id ke data yang akan disimpan
       $data['user_id'] = $userId;
 
-      // Menyimpan pengajuan KTA
-      $kta = KTA::create($data);
+      // Mengecek apakah pengguna sudah memiliki pendaftaran KTA sebelumnya yang statusnya ditolak
+      $existingKTA = KTA::where('user_id', $userId)->where('status_diterima', 'rejected')->first();
 
-      return response()->json(['message' => 'Pengajuan KTA berhasil disubmit', 'kta' => $kta], 201);
+      if ($existingKTA) {
+        // Jika ada pendaftaran KTA yang ditolak, update data yang ada
+        $existingKTA->update($data);
+        $message = 'Pengajuan KTA diperbarui setelah penolakan.';
+      } else {
+        // Jika tidak ada pendaftaran yang ditolak sebelumnya, buat data KTA baru
+        $existingKTA = KTA::create($data);
+        $message = 'Pengajuan KTA berhasil disubmit';
+      }
+
+      return response()->json(['message' => $message, 'kta' => $existingKTA], 201);
     } catch (\Exception $e) {
       return response()->json(['message' => 'Terjadi kesalahan pada server', 'error' => $e->getMessage()], 500);
     }
   }
+
 
 
   // Fungsi untuk memperpanjang KTA
@@ -193,6 +209,9 @@ class KtaController extends Controller
         $ktaRegistration->tanggal_diterima = now();
         $ktaRegistration->status_aktif = 'active';
         $ktaRegistration->expired_at = now()->addYears(2); // Berlaku 2 tahun
+        $ktaRegistration->can_reapply = true; // Membolehkan pengajuan ulang
+        $ktaRegistration->komentar = null; // Tidak ada komentar ketika disetujui
+        $ktaRegistration->rejection_date = null; // Tidak ada tanggal penolakan
         $ktaRegistration->save();
 
         return response()->json([
@@ -214,10 +233,22 @@ class KtaController extends Controller
           ], 400);
         }
 
+        // Update status_diterima menjadi "rejected"
+        $ktaRegistration->status_diterima = 'rejected';
+
+        // Reset status untuk memungkinkan pendaftaran ulang
+        $ktaRegistration->can_reapply = true; // Membolehkan pendaftaran ulang
+        $ktaRegistration->komentar = $validated['komentar']; // Simpan komentar (alasan penolakan)
+        $ktaRegistration->rejection_date = now(); // Simpan tanggal penolakan
+
+        // Simpan perubahan status
+        $ktaRegistration->save();
+
         // Hapus file yang diunggah oleh user di storage/app/kta/$id_user
         $userId = $ktaRegistration->user_id;
         $userDirectory = storage_path("app/kta/{$userId}");
 
+        // Debugging: Cek apakah direktori ada dan file ditemukan
         if (is_dir($userDirectory)) {
           $files = glob($userDirectory . '/*'); // Dapatkan semua file dalam direktori
           foreach ($files as $file) {
@@ -228,12 +259,9 @@ class KtaController extends Controller
           rmdir($userDirectory); // Hapus direktori setelah file dihapus
         }
 
-        // Hapus data pendaftaran KTA dari database
-        $ktaRegistration->delete();
-
         return response()->json([
           'success' => true,
-          'message' => 'Pendaftaran KTA berhasil ditolak dan datanya telah dihapus.',
+          'message' => 'Pendaftaran KTA berhasil ditolak. Pengguna dapat langsung mendaftar ulang. Dokumen dihapus.',
         ], 200);
       }
     } catch (\Illuminate\Validation\ValidationException $validationException) {
@@ -253,10 +281,59 @@ class KtaController extends Controller
     }
   }
 
+  public function allPending(Request $request)
+  {
+    try {
+      // Ambil parameter filter opsional dari request
+      $status = $request->query('status', 'pending', 'rejected'); // 'null' untuk melihat semua status
+
+      // Query data pendaftaran
+      $query = KTA::select(
+        'ktas.user_id',
+        'ktas.id',
+        'users.nama_perusahaan',
+        'users.nama_direktur',
+        'users.alamat_perusahaan',
+        'users.email',
+        'ktas.status_diterima',
+        'ktas.status_aktif',
+        'ktas.tanggal_diterima',
+        'ktas.expired_at',
+        'ktas.rejection_date',
+        'ktas.komentar',
+        'ktas.created_at',
+        'kota_kabupaten.nama as kota_kabupaten'
+      )
+        ->join('users', 'ktas.user_id', '=', 'users.id')
+        ->join('kota_kabupaten', 'ktas.kabupaten_id', '=', 'kota_kabupaten.id');
+
+      // Filter berdasarkan status (jika diberikan)
+      if (!is_null($status)) {
+        $query->where('ktas.status_diterima', $status);
+      }
+
+      // Urutkan berdasarkan tanggal pendaftaran terbaru
+      $registrants = $query->orderBy('ktas.created_at', 'desc')->get();
+
+      return response()->json([
+        'success' => true,
+        'message' => 'Data pendaftaran berhasil diambil.',
+        'data' => $registrants,
+      ], 200);
+    } catch (\Exception $exception) {
+      // Tangani error
+      return response()->json([
+        'success' => false,
+        'message' => 'Terjadi kesalahan saat mengambil data pendaftaran.',
+        'error' => $exception->getMessage(),
+      ], 500);
+    }
+  }
 
   public function index()
   {
     $ktas = KTA::select(
+      'ktas.id',
       'users.nama_perusahaan',
       'users.nama_direktur',
       'users.alamat_perusahaan',
@@ -320,7 +397,7 @@ class KtaController extends Controller
 
     return response()->json($ktas);
   }
-  public function downloadKTAFiles(Request $request, $id)
+  public function downloadKTAFiles($id)
   {
     try {
       // Lokasi folder file KTA berdasarkan ID KTA
@@ -386,27 +463,5 @@ class KtaController extends Controller
         'message' => 'Berkas untuk KTA ini tidak ditemukan.',
       ], 404);
     }
-  }
-
-  public function uploadKTAFile(Request $request, $userId)
-  {
-    // Validasi file yang diunggah
-    $request->validate([
-      'kta_file' => 'required|mimes:pdf,jpeg,png,jpg|max:2048', // Menentukan tipe file
-    ]);
-
-    $user = User::findOrFail($userId);
-
-    // Mengunggah file dan menyimpannya di storage
-    if ($request->hasFile('kta_file')) {
-      $file = $request->file('kta_file');
-      $filePath = $file->storeAs('kta_files', 'kta_' . $user->id . '.' . $file->getClientOriginalExtension());
-
-      // Menyimpan path file di database
-      $user->kta_file = $filePath;
-      $user->save();
-    }
-
-    return response()->json(['message' => 'File KTA berhasil diunggah!']);
   }
 }

@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Admin;
 use App\Models\SbunRegistration;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
@@ -91,9 +93,6 @@ class SbunRegistrationController extends Controller
       ], 500);
     }
   }
-
-
-
 
   public function show($id)
   {
@@ -237,6 +236,103 @@ class SbunRegistrationController extends Controller
     // Menampilkan daftar pendaftaran SBUN
     $registrations = SbunRegistration::with('user', 'nonKonstruksiKlasifikasi', 'nonKonstruksiSubKlasifikasi')->get();
     return response()->json($registrations);
+  }
+
+  public function allPending(Request $request)
+  {
+    try {
+      // Mengambil status dari query parameter, default ke 'pending'
+      $status = $request->query('status', 'pending');
+
+      // Memulai query
+      $query = sbunRegistration::select(
+        'sbun_registration.user_id',
+        'sbun_registration.id',
+        'users.nama_perusahaan',
+        'users.alamat_perusahaan',
+        'users.email',
+        'sbun_registration.nomor_hp_penanggung_jawab',
+        'sbun_registration.non_konstruksi_klasifikasi_id',
+        'sbun_registration.non_konstruksi_sub_klasifikasi_id',
+        'sbun_registration.rekening_id',
+        'sbun_registration.bukti_transfer',
+        'sbun_registration.status_diterima',
+        'sbun_registration.status_aktif',
+        'sbun_registration.tanggal_diterima',
+        'sbun_registration.komentar'
+      )
+        ->join('users', 'sbun_registration.user_id', '=', 'users.id');
+
+      // Menambahkan kondisi berdasarkan status
+      if ($status === 'pending') {
+        $query->where('sbun_registration.status_diterima', 'pending');
+      } elseif ($status === 'rejected') {
+        $query->where('sbun_registration.status_diterima', 'rejected');
+      }
+
+      // Mengambil data
+      $registrations = $query->orderBy('sbun_registration.created_at', 'desc')->get();
+
+      return response()->json([
+        'success' => true,
+        'message' => 'Daftar pendaftaran SBUN Berhasil di Ambil',
+        'data' => $registrations,
+      ]);
+    } catch (\Exception $e) {
+      return response()->json([
+        'success' => false,
+        'message' => 'Terjadi kesalahan saat mengambil data',
+        'error' => $e->getMessage(),
+      ]);
+    }
+  }
+  public function allActive(Request $request)
+  {
+    try {
+      // Mengambil status dari query parameter, default ke 'pending'
+      $status = $request->query('status', 'active');
+
+      // Memulai query
+      $query = sbunRegistration::select(
+        'sbun_registration.user_id',
+        'sbun_registration.id',
+        'users.nama_perusahaan',
+        'users.alamat_perusahaan',
+        'users.email',
+        'sbun_registration.nomor_hp_penanggung_jawab',
+        'sbun_registration.non_konstruksi_klasifikasi_id',
+        'sbun_registration.non_konstruksi_sub_klasifikasi_id',
+        'sbun_registration.rekening_id',
+        'sbun_registration.bukti_transfer',
+        'sbun_registration.status_diterima',
+        'sbun_registration.status_aktif',
+        'sbun_registration.tanggal_diterima',
+        'sbun_registration.komentar'
+      )
+        ->join('users', 'sbun_registration.user_id', '=', 'users.id');
+
+      // Menambahkan kondisi berdasarkan status
+      if ($status === 'pending') {
+        $query->where('sbun_registration.status_diterima', 'pending');
+      } elseif ($status === 'rejected') {
+        $query->where('sbun_registration.status_diterima', 'rejected');
+      }
+
+      // Mengambil data
+      $registrations = $query->orderBy('sbun_registration.created_at', 'desc')->get();
+
+      return response()->json([
+        'success' => true,
+        'message' => 'Daftar pendaftaran SBUN Berhasil di Ambil',
+        'data' => $registrations,
+      ]);
+    } catch (\Exception $e) {
+      return response()->json([
+        'success' => false,
+        'message' => 'Terjadi kesalahan saat mengambil data',
+        'error' => $e->getMessage(),
+      ]);
+    }
   }
 
   public function search(Request $request)

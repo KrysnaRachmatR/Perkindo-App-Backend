@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Validator;
 class NonKonstruksiKlasifikasiController extends Controller
 {
     // Menampilkan semua klasifikasi dengan sub klasifikasi
-    public function indexWithSubKlasifikasiAndCodes()
+    public function hancok()
     {
         $klasifikasis = NonKonstruksiKlasifikasi::with('subKlasifikasis')->get();
 

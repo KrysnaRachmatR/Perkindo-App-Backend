@@ -5,12 +5,23 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\SubKlasifikasi;
+use App\Models\Klasifikasi;
 
 class SubKlasifikasiController extends Controller
 {
+  // Menampilkan semua sub klasifikasi dari klasifikasi tertentu
   public function index($klasifikasiId)
   {
-    $subKlasifikasis = SubKlasifikasi::where('klasifikasi_id', $klasifikasiId)->get();
+    $klasifikasi = Klasifikasi::find($klasifikasiId);
+
+    if (!$klasifikasi) {
+      return response()->json([
+        'success' => false,
+        'message' => 'Klasifikasi tidak ditemukan',
+      ], 404);
+    }
+
+    $subKlasifikasis = $klasifikasi->subKlasifikasis;
 
     return response()->json([
       'success' => true,
@@ -18,26 +29,52 @@ class SubKlasifikasiController extends Controller
     ]);
   }
 
+  // Menambahkan sub klasifikasi baru ke dalam klasifikasi tertentu
   public function store(Request $request, $klasifikasiId)
   {
+    $klasifikasi = Klasifikasi::find($klasifikasiId);
+
+    if (!$klasifikasi) {
+      return response()->json([
+        'success' => false,
+        'message' => 'Klasifikasi tidak ditemukan',
+      ], 404);
+    }
+
     $validated = $request->validate([
       'nama' => 'required|string|max:255',
       'sbu_code' => 'required|string|max:10',
     ]);
 
-    $validated['klasifikasi_id'] = $klasifikasiId;
-    $subKlasifikasi = SubKlasifikasi::create($validated);
+    $subKlasifikasi = $klasifikasi->subKlasifikasis()->create($validated);
+
     return response()->json([
       'success' => true,
+      'message' => 'Sub Klasifikasi berhasil ditambahkan',
       'data' => $subKlasifikasi,
-      'message' => 'Sub Klasifikasi berhasil ditambahkan.',
     ], 201);
   }
 
+  // Menampilkan detail sub klasifikasi dari klasifikasi tertentu
   public function show($klasifikasiId, $subKlasifikasiId)
   {
-    $subKlasifikasi = SubKlasifikasi::where('klasifikasi_id', $klasifikasiId)
-      ->findOrFail($subKlasifikasiId);
+    $klasifikasi = Klasifikasi::find($klasifikasiId);
+
+    if (!$klasifikasi) {
+      return response()->json([
+        'success' => false,
+        'message' => 'Klasifikasi tidak ditemukan',
+      ], 404);
+    }
+
+    $subKlasifikasi = $klasifikasi->subKlasifikasis()->find($subKlasifikasiId);
+
+    if (!$subKlasifikasi) {
+      return response()->json([
+        'success' => false,
+        'message' => 'Sub Klasifikasi tidak ditemukan',
+      ], 404);
+    }
 
     return response()->json([
       'success' => true,
@@ -45,10 +82,26 @@ class SubKlasifikasiController extends Controller
     ]);
   }
 
+  // Mengupdate sub klasifikasi dari klasifikasi tertentu
   public function update(Request $request, $klasifikasiId, $subKlasifikasiId)
   {
-    $subKlasifikasi = SubKlasifikasi::where('klasifikasi_id', $klasifikasiId)
-      ->findOrFail($subKlasifikasiId);
+    $klasifikasi = Klasifikasi::find($klasifikasiId);
+
+    if (!$klasifikasi) {
+      return response()->json([
+        'success' => false,
+        'message' => 'Klasifikasi tidak ditemukan',
+      ], 404);
+    }
+
+    $subKlasifikasi = $klasifikasi->subKlasifikasis()->find($subKlasifikasiId);
+
+    if (!$subKlasifikasi) {
+      return response()->json([
+        'success' => false,
+        'message' => 'Sub Klasifikasi tidak ditemukan',
+      ], 404);
+    }
 
     $validated = $request->validate([
       'nama' => 'sometimes|required|string|max:255',
@@ -59,21 +112,37 @@ class SubKlasifikasiController extends Controller
 
     return response()->json([
       'success' => true,
+      'message' => 'Sub Klasifikasi berhasil diperbarui',
       'data' => $subKlasifikasi,
-      'message' => 'Sub Klasifikasi berhasil diperbarui.',
     ]);
   }
 
+  // Menghapus sub klasifikasi dari klasifikasi tertentu
   public function destroy($klasifikasiId, $subKlasifikasiId)
   {
-    $subKlasifikasi = SubKlasifikasi::where('klasifikasi_id', $klasifikasiId)
-      ->findOrFail($subKlasifikasiId);
+    $klasifikasi = Klasifikasi::find($klasifikasiId);
+
+    if (!$klasifikasi) {
+      return response()->json([
+        'success' => false,
+        'message' => 'Klasifikasi tidak ditemukan',
+      ], 404);
+    }
+
+    $subKlasifikasi = $klasifikasi->subKlasifikasis()->find($subKlasifikasiId);
+
+    if (!$subKlasifikasi) {
+      return response()->json([
+        'success' => false,
+        'message' => 'Sub Klasifikasi tidak ditemukan',
+      ], 404);
+    }
 
     $subKlasifikasi->delete();
 
     return response()->json([
       'success' => true,
-      'message' => 'Sub Klasifikasi berhasil dihapus.',
+      'message' => 'Sub Klasifikasi berhasil dihapus',
     ]);
   }
 }

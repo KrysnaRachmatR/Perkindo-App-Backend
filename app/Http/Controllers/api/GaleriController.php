@@ -72,20 +72,25 @@ class GaleriController extends Controller
     {
         try {
             $request->validate([
-                'judul' => 'required|string|max:255',
-                'caption' => 'required|string',
+                'judul' => 'sometimes|string|max:255',
+                'caption' => 'sometimes|string',
                 'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             ], [
-                'judul.required' => 'Judul harus diisi.',
-                'caption.required' => 'Caption harus diisi.',
+                'judul.string' => 'Judul harus berupa teks.',
+                'caption.string' => 'Caption harus berupa teks.',
                 'gambar.image' => 'File harus berupa gambar.',
                 'gambar.mimes' => 'Format gambar harus jpeg, png, jpg, atau gif.',
                 'gambar.max' => 'Ukuran gambar maksimal 2MB.',
             ]);
 
             $galeri = Galeri::findOrFail($id);
-            $galeri->judul = $request->judul ?? $galeri->judul;
-            $galeri->caption = $request->caption ?? $galeri->caption;
+
+            if ($request->has('judul')) {
+                $galeri->judul = $request->judul;
+            }
+            if ($request->has('caption')) {
+                $galeri->caption = $request->caption;
+            }
 
             if ($request->hasFile('gambar')) {
                 // Hapus gambar lama jika ada
@@ -93,7 +98,7 @@ class GaleriController extends Controller
                     Storage::disk('public')->delete($galeri->gambar);
                 }
 
-                // Simpan gambar ke direktori berdasarkan ID
+                // Simpan gambar baru ke direktori galeri/id
                 $directory = "galeri/{$galeri->id}";
                 $path = $request->file('gambar')->store($directory, 'public');
                 $galeri->gambar = $path;
@@ -102,6 +107,7 @@ class GaleriController extends Controller
             $galeri->save();
 
             return response()->json([
+                'success' => true,
                 'message' => 'Data updated successfully',
                 'data' => [
                     'id' => $galeri->id,
@@ -113,11 +119,13 @@ class GaleriController extends Controller
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
+                'success' => false,
                 'message' => 'Failed to update data',
                 'error' => $e->getMessage()
             ], 500);
         }
     }
+
 
     // Delete galeri
     public function destroy($id)

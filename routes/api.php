@@ -57,6 +57,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
     //Validasi KTA
     Route::get('/kta', [KtaController::class, 'index']);
+    Route::get('/kta/all-pending', [KtaController::class, 'allPending']);
     Route::get('/kta/{id}', [KtaController::class, 'show']);
     Route::put('/kta/approve/{id}', [KTAController::class, 'approveKTA']);
     Route::get('/download-kta/{userId}', [KtaController::class, 'downloadKTAFiles']);
@@ -132,10 +133,10 @@ Route::middleware(['auth:sanctum', 'user'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     Route::get('/getKta', [KtaController::class, 'getKTA']);
-    Route::post('/kta', [KtaController::class, 'store']);
-    Route::get('/kta', [KtaController::class, 'getKTA']);
-    Route::post('kta/{id}/extend', [KtaController::class, 'extend']);
+    Route::post('/regist/kta', [KtaController::class, 'store']);
+    Route::get('/detail/kta', [KtaController::class, 'getKTA']);
+    Route::post('/kta/{id}/extend', [KtaController::class, 'extend']);
 
-    Route::post('/sbu', [SbusRegistrationController::class, 'store']);
+    Route::post('/sbus', [SbusRegistrationController::class, 'store']);
     Route::post('/sbun', [SbunRegistrationController::class, 'store']);
 });

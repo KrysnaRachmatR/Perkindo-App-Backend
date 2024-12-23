@@ -24,17 +24,22 @@ class User extends Authenticatable
         'password',
         'remember_token',
     ];
-    public function KTA()
+
+    // Relasi ke KTA
+    public function kta()
     {
         return $this->hasOne(KTA::class, 'user_id');
     }
 
-    public function SBUSRegistrations()
+    // Relasi ke SBUS (SBU Konstruksi)
+    public function sbusRegistrations()
     {
-        return $this->hasMany(SBURegistrations::class, 'user_id');
+        return $this->hasMany(SbusRegistrations::class, 'user_id');
     }
-    public function SBUNRegistrations()
+
+    // Relasi ke SBUN (SBU Non Konstruksi)
+    public function sbunRegistrations()
     {
-        return $this->hasMany(SBUNRegistrations::class, 'user_id');
+        return $this->hasMany(SbunRegistration::class, 'user_id');
     }
 }

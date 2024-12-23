@@ -51,19 +51,33 @@ class AgendaController extends Controller
     $agenda = Agenda::find($id);
 
     if (!$agenda) {
-      return response()->json(['message' => 'Agenda not found'], 404);
+      return response()->json([
+        'success' => false,
+        'message' => 'Agenda not found'
+      ], 404);
     }
 
-    $request->validate([
-      'date' => 'required|date',
-      'title' => 'required|string|max:255',
-      'caption' => 'required|string',
+    $validated = $request->validate([
+      'date' => 'sometimes|date',
+      'title' => 'sometimes|string|max:255',
+      'caption' => 'sometimes|string',
     ]);
 
-    $agenda->update($request->only(['date', 'title', 'caption']));
-
-    return response()->json(['message' => 'Agenda updated successfully', 'agenda' => $agenda]);
+    if ($agenda->update($validated)) {
+      return response()->json([
+        'success' => true,
+        'message' => 'Agenda updated successfully',
+        'data' => $agenda
+      ]);
+    } else {
+      return response()->json([
+        'success' => false,
+        'message' => 'Failed to update agenda'
+      ], 500);
+    }
   }
+
+
 
   // Menghapus agenda
   public function destroy($id)

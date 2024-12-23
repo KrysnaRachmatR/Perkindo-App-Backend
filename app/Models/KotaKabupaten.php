@@ -10,7 +10,7 @@ class KotaKabupaten extends Model
     use HasFactory;
 
     // Nama tabel (opsional)
-    protected $table = 'kota_kabupatens';
+    protected $table = 'kota_kabupaten';
 
     // Kolom yang bisa diisi
     protected $fillable = [

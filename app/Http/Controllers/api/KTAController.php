@@ -102,9 +102,6 @@ class KtaController extends Controller
     }
   }
 
-
-
-  // Fungsi untuk memperpanjang KTA
   public function extend(Request $request, $id)
   {
     $request->validate([
@@ -131,47 +128,6 @@ class KtaController extends Controller
     }
 
     return response()->json(['message' => 'Perpanjangan KTA berhasil diajukan.'], 200);
-  }
-
-  public function getKTA(Request $request)
-  {
-    // Middleware auth akan memastikan token valid
-    $user = auth()->user();
-
-    // Pastikan user sudah login
-    if (!$user) {
-      return response()->json(['message' => 'User not authenticated'], 401);
-    }
-
-    // Cari data KTA berdasarkan user ID
-    $kta = KTA::where('user_id', $user->id)->first();
-
-    // Jika data KTA tidak ditemukan
-    if (!$kta) {
-      return response()->json(['hasKTA' => false, 'message' => 'No KTA found for this user'], 404);
-    }
-
-    // Cek apakah status_diterima adalah approve
-    $hasKTA = $kta->status_diterima === 'approve';
-
-    // Kembalikan data KTA beserta hasKTA
-    return response()->json([
-      'hasKTA' => $hasKTA,
-      'status_diterima' => $kta->status_diterima,
-      'komentar' => $kta->komentar,
-      'kta' => $kta
-    ], 200);
-  }
-
-  public function downloadKta($id)
-  {
-    $user = User::findOrFail($id);
-
-    if (!$user->kta_path || !Storage::exists($user->kta_path)) {
-      return response()->json(['message' => 'File KTA tidak ditemukan'], 404);
-    }
-
-    return Storage::download($user->kta_path);
   }
 
 

@@ -55,8 +55,9 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/kta/{id}', [KtaController::class, 'show']);
     Route::put('/kta/approve/{id}', [KTAController::class, 'approveKTA']);
     Route::get('/download-kta/{userId}', [KtaController::class, 'downloadKTAFiles']);
+    Route::post('/kta/upload-kta/{id}', [KtaController::class, 'uploadKta']);
 
-    //Validasi SBU Konstruksi
+    //Validasi SBU Konstri
     Route::get('/sbun/all-pending', [SbunRegistrationController::class, 'allPending']);
     Route::get('/sbun/all-active', [SbunRegistrationController::class, 'allActive']);
     Route::get('/sbus/search', [SbusRegistrationController::class, 'search']);
@@ -65,12 +66,21 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::put('/sbu/{id}/status', [SbusRegistrationController::class, 'status']);
     Route::get('/sbus/documents/download/{id}', [SbusRegistrationController::class, 'downloadSBUSDocuments']);
 
+    Route::get('/sbus', [SbusRegistrationController::class, 'index']);
+    Route::get('/sbus/pending', [SbusRegistrationController::class, 'pending']);
+    Route::get('/sbus/active', [SbusRegistrationController::class, 'active']);
+    Route::get('/sbus/{id}', [SbusRegistrationController::class, 'show']);
+    Route::put('/sbus/{id}/status', [SbusRegistrationController::class, 'status']);
+    Route::get('/sbus/{id}/download', [SbusRegistrationController::class, 'downloadSBUSFiles']);
+
     //Validasi SBU Non Konstruksi
     Route::get('/sbun/search', [SbunRegistrationController::class, 'search']);
     Route::get('/sbun', [SbunRegistrationController::class, 'index']);
-    Route::get('/sbun/{id}', [SbunRegistrationController::class, 'show']);
+    Route::get('/sbun/pending', [SbunRegistrationController::class, 'pending']);
+    Route::get('/sbun/active', [SbunRegistrationController::class, 'active']);
+    Route::get('/sbun/{userId}', [SbunRegistrationController::class, 'show']);
     Route::put('/sbun/{id}/status', [SbunRegistrationController::class, 'status']);
-    Route::get('/sbun/{id}/download', [SbunRegistrationController::class, 'downloadSBUNDocuments']);
+    Route::get('/sbun/{id}/download', [SbunRegistrationController::class, 'downloadSBUNFiles']);
 
     //Rekening Tujuan Routes
     Route::get('/rek', [RekeningController::class, 'index']);
@@ -136,6 +146,12 @@ Route::middleware(['auth:sanctum', 'user'])->group(function () {
 
     Route::post('/kta', [KtaController::class, 'store']);
     Route::post('kta/{id}/extend', [KtaController::class, 'extend']);
+
+    Route::get('/getKta', [KtaController::class, 'getKTA']);
+    Route::post('/regist/kta', [KtaController::class, 'store']);
+    Route::get('/detail/kta', [KtaController::class, 'getKTA']);
+    Route::post('/kta/{id}/extend', [KtaController::class, 'extend']);
+    Route::get('/download-kta/{id}', [KtaController::class, 'downloadKta']);
 
     Route::post('/sbu', [SbusRegistrationController::class, 'store']);
     Route::post('/sbun', [SbunRegistrationController::class, 'store']);

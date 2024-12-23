@@ -452,4 +452,26 @@ class SbunRegistrationController extends Controller
       ], 500);
     }
   }
+
+  public function getSbun(Request $request)
+  {
+    // Middleware auth akan memastikan token valid
+    $user = auth()->user();
+
+    // Pastikan user sudah login
+    if (!$user) {
+      return response()->json(['message' => 'User not authenticated'], 401);
+    }
+
+    // Cari data SBUS berdasarkan user ID
+    $sbun = SbunRegistration::where('user_id', $user->id)->first();
+
+
+    // Kembalikan data SBUS
+    return response()->json([
+      'status_diterima' => $sbun->status_diterima,
+      'komentar' => $sbun->komentar,
+      'sbun' => $sbun
+    ], 200);
+  }
 }

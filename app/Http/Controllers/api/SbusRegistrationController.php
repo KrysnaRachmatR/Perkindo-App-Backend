@@ -460,4 +460,25 @@ class SbusRegistrationController extends Controller
       ], 500);
     }
   }
+
+  public function getSbus(Request $request)
+  {
+    // Middleware auth akan memastikan token valid
+    $user = auth()->user();
+
+    // Pastikan user sudah login
+    if (!$user) {
+      return response()->json(['message' => 'User not authenticated'], 401);
+    }
+
+    // Cari data SBUS berdasarkan user ID
+    $sbus = SBUSRegistrations::where('user_id', $user->id)->first();
+
+    // Kembalikan data SBUS
+    return response()->json([
+      'status_diterima' => $sbus->status_diterima,
+      'komentar' => $sbus->komentar,
+      'sbus' => $sbus
+    ], 200);
+  }
 }

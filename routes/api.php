@@ -28,7 +28,7 @@ Route::get('/galeri', [GaleriController::class, 'index']);
 Route::get('/profile', [ProfileController::class, 'getProfile']);
 Route::get('/berita/{berita_id}/komentar', [KomentarController::class, 'index']);
 Route::post('/berita/{berita_id}/komentar', [KomentarController::class, 'store']);
-
+Route::get('/detail/all-user', [UserDetailController::class, 'index']);
 // Data untuk Public
 Route::get('/kota-kabupaten', [KotaKabupatenController::class, 'index']);
 Route::get('/rek', [RekeningController::class, 'index']);
@@ -56,7 +56,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/sbun/search', [SbunRegistrationController::class, 'search']);
 
     //Validasi KTA
-    Route::get('/detail/all-user', [UserDetailController::class, 'index']);
+    
     Route::get('/kta', [KtaController::class, 'index']);
     Route::get('/kta/all-pending', [KtaController::class, 'allPending']);
     Route::get('/kta/{id}', [KtaController::class, 'show']);
@@ -148,7 +148,10 @@ Route::middleware(['auth:sanctum', 'user'])->group(function () {
 
     Route::post('/kta', [KtaController::class, 'store']);
     Route::post('kta/{id}/extend', [KtaController::class, 'extend']);
+    Route::get('/getKta', [KtaController::class, 'getKTA']);
 
     Route::post('/sbus', [SbusRegistrationController::class, 'store']);
     Route::post('/sbun', [SbunRegistrationController::class, 'store']);
+    Route::get('/getSbus', [SbusRegistrationController::class, 'getSbus']);
+    Route::get('/getSbun', [SbunRegistrationController::class, 'getSbun']);
 });

@@ -11,9 +11,7 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    /**
-     * Register User (Anggota).
-     */
+   
     public function register(Request $request)
     {
         $validatedData = $request->validate([
@@ -40,9 +38,6 @@ class AuthController extends Controller
         ], 201);
     }
 
-    /**
-     * Login untuk Admin atau User.
-     */
     public function login(Request $request)
 {
     $credentials = $request->validate([
@@ -55,8 +50,6 @@ class AuthController extends Controller
     if ($admin && Hash::check($credentials['password'], $admin->password)) {
         // Buat token
         $token = $admin->createToken('Admin Token', ['admin:access'])->plainTextToken;
-
-        // Atur masa berlaku token 2 menit
         $admin->tokens()->latest()->first()->update([
             'expires_at' => now()->addHours(6)
         ]);
@@ -64,7 +57,7 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Login berhasil sebagai admin',
             'token' => $token,
-            'expires_at' => now()->addMinutes(2),
+            'expires_at' => now()->addHours(6),
             'user' => [
                 'id' => $admin->id,
                 'name' => $admin->name,
@@ -79,16 +72,14 @@ class AuthController extends Controller
     $user = User::where('email', $credentials['email'])->first();
     if ($user && Hash::check($credentials['password'], $user->password)) {
         $token = $user->createToken('User Token', ['user:access'])->plainTextToken;
-
-        // Atur masa berlaku token 2 menit
         $user->tokens()->latest()->first()->update([
-            'expires_at' => now()->addMinutes(2)
+            'expires_at' => now()->addHours(2)
         ]);
 
         return response()->json([
             'message' => 'Login berhasil sebagai user',
             'token' => $token,
-            'expires_at' => now()->addMinutes(2),
+            'expires_at' => now()->addHours(6),
             'user' => [
                 'id' => $user->id,
                 'nama_perusahaan' => $user->nama_perusahaan,
@@ -103,11 +94,6 @@ class AuthController extends Controller
     return response()->json(['message' => 'Email atau password salah'], 401);
 }
 
-
-
-    /**
-     * Logout dari sistem.
-     */
     public function logout(Request $request)
     {
         $user = $request->user();

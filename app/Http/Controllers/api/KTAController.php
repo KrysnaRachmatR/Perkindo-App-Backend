@@ -89,11 +89,11 @@ class KtaController extends Controller
       if ($existingKTA) {
         // Jika ada pendaftaran KTA yang ditolak, update data yang ada
         $existingKTA->update($data);
-        $message = 'Pengajuan KTA diperbarui setelah penolakan.';
+        $message = 'The KTA application is updated after rejection.';
       } else {
         // Jika tidak ada pendaftaran yang ditolak sebelumnya, buat data KTA baru
         $existingKTA = KTA::create($data);
-        $message = 'Pengajuan KTA berhasil disubmit';
+        $message = 'The KTA application has been successfully submitted.';
       }
 
       return response()->json(['message' => $message, 'kta' => $existingKTA], 201);
@@ -127,7 +127,7 @@ class KtaController extends Controller
       ]);
     }
 
-    return response()->json(['message' => 'Perpanjangan KTA berhasil diajukan.'], 200);
+    return response()->json(['message' => 'KTA extension submitted successfully.'], 200);
   }
 
 
@@ -142,33 +142,6 @@ class KtaController extends Controller
   //
 
   // ----------ADMIN CONTROLLER----------\\
-
-
-  // Fungsi untuk menyetujui atau menolak perpanjangan KTA
-  public function approveOrReject(Request $request, $id)
-  {
-    $request->validate([
-      'status_perpanjangan_kta' => 'required|in:accepted,rejected',
-      'komentar' => 'nullable|string'
-    ]);
-
-    $kta = KTA::findOrFail($id);
-
-    if ($request->status_perpanjangan_kta === 'accepted') {
-      $kta->status_perpanjangan_kta = 'active';
-      $kta->tanggal_diterima = now(); // Tanggal diperpanjang
-    } else if ($request->status_perpanjangan_kta === 'rejected') {
-      $kta->status_perpanjangan_kta = 'rejected';
-      $kta->komentar = $request->komentar; // Simpan komentar penolakan dari admin
-    }
-
-    $kta->save();
-
-    return response()->json([
-      'message' => 'Status perpanjangan KTA berhasil diperbarui.',
-      'kta' => $kta
-    ]);
-  }
 
   // Fungsi untuk menyetujui KTA
   public function approveKTA(Request $request, $id)
@@ -187,7 +160,7 @@ class KtaController extends Controller
       if (!$ktaRegistration) {
         return response()->json([
           'success' => false,
-          'message' => 'Pendaftaran KTA tidak ditemukan.',
+          'message' => 'KTA registration not found.',
         ], 404);
       }
 
@@ -197,7 +170,7 @@ class KtaController extends Controller
         if ($ktaRegistration->status_diterima === 'approve') {
           return response()->json([
             'success' => false,
-            'message' => 'Pendaftaran KTA sudah disetujui sebelumnya.',
+            'message' => 'KTA registration has been previously approved.',
           ], 400);
         }
 
@@ -213,7 +186,7 @@ class KtaController extends Controller
 
         return response()->json([
           'success' => true,
-          'message' => 'Pendaftaran KTA berhasil disetujui.',
+          'message' => 'KTA registration has been successfully approved.',
           'data' => $ktaRegistration,
         ], 200);
       }
@@ -226,7 +199,7 @@ class KtaController extends Controller
         ) {
           return response()->json([
             'success' => false,
-            'message' => 'Pendaftaran KTA yang sudah disetujui dan aktif tidak bisa ditolak.',
+            'message' => 'KTA registration that has been approved and active cannot be rejected.',
           ], 400);
         }
 
@@ -258,21 +231,21 @@ class KtaController extends Controller
 
         return response()->json([
           'success' => true,
-          'message' => 'Pendaftaran KTA berhasil ditolak. Pengguna dapat langsung mendaftar ulang. Dokumen dihapus.',
+          'message' => 'KTA registration has been successfully rejected. Users can immediately re-register. Document deleted.',
         ], 200);
       }
     } catch (\Illuminate\Validation\ValidationException $validationException) {
       // Tangani kesalahan validasi
       return response()->json([
         'success' => false,
-        'message' => 'Validasi gagal.',
+        'message' => 'Validation failed.',
         'errors' => $validationException->errors(),
       ], 422);
     } catch (\Exception $exception) {
       // Tangani kesalahan umum
       return response()->json([
         'success' => false,
-        'message' => 'Terjadi kesalahan saat memperbarui status pendaftaran KTA.',
+        'message' => 'An error occurred while updating the KTA registration status.',
         'error' => $exception->getMessage(),
       ], 500);
     }
@@ -314,14 +287,14 @@ class KtaController extends Controller
 
       return response()->json([
         'success' => true,
-        'message' => 'Data pendaftaran berhasil diambil.',
+        'message' => 'Registration data has been successfully retrieved.',
         'data' => $registrants,
       ], 200);
     } catch (\Exception $exception) {
       // Tangani error
       return response()->json([
         'success' => false,
-        'message' => 'Terjadi kesalahan saat mengambil data pendaftaran.',
+        'message' => 'An error occurred while retrieving registration data.',
         'error' => $exception->getMessage(),
       ], 500);
     }
@@ -404,7 +377,7 @@ class KtaController extends Controller
       if (!Storage::disk('local')->exists($directoryPath)) {
         return response()->json([
           'success' => false,
-          'message' => 'Berkas untuk KTA ini tidak ditemukan.',
+          'message' => 'The file for this KTA was not found.',
         ], 404);
       }
 
@@ -415,7 +388,7 @@ class KtaController extends Controller
       if (empty($files)) {
         return response()->json([
           'success' => false,
-          'message' => 'Folder tidak mengandung berkas.',
+          'message' => 'The folder contains no files.',
         ], 404);
       }
 
@@ -457,7 +430,7 @@ class KtaController extends Controller
       Log::error('Error downloading KTA files for KTA ' . $id . ': ' . $e->getMessage());
       return response()->json([
         'success' => false,
-        'message' => 'Berkas untuk KTA ini tidak ditemukan.',
+        'message' => 'The file for this KTA was not found.',
       ], 404);
     }
   }
@@ -493,13 +466,13 @@ class KtaController extends Controller
           'kta_file' => $filePath,
         ]);
 
-        return response()->json(['message' => 'KTA berhasil diunggah']);
+        return response()->json(['message' => 'KTA uploaded successfully']);
       } else {
-        return response()->json(['message' => 'Tidak ada file yang diunggah.'], 400);
+        return response()->json(['message' => 'No files uploaded.'], 400);
       }
     } catch (\Exception $e) {
       // Menangani error jika terjadi masalah saat proses penyimpanan
-      return response()->json(['message' => 'Terjadi kesalahan saat mengunggah file.', 'error' => $e->getMessage()], 500);
+      return response()->json(['message' => 'An error occurred while uploading the file.', 'error' => $e->getMessage()], 500);
     }
   }
 }

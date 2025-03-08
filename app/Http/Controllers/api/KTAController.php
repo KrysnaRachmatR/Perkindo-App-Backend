@@ -16,94 +16,91 @@ use ZipStream\ZipStream;
 class KtaController extends Controller
 {
   // ----------USER CONTROLLER----------\\
-  public function store(Request $request)
-  {
-    // Validasi input
-    $validator = Validator::make(
-      $request->all(),
-      [
-        'formulir_permohonan' => 'required|file',
-        'pernyataan_kebenaran' => 'required|file',
-        'pengesahan_menkumham' => 'required|file',
-        'akta_pendirian' => 'required|file',
-        'akta_perubahan' => 'nullable|file',
-        'npwp_perusahaan' => 'required|file',
-        'surat_domisili' => 'required|file',
-        'ktp_pengurus' => 'required|file',
-        'logo' => 'nullable|file',
-        'foto_direktur' => 'nullable|file',
-        'npwp_pengurus_akta' => 'required|file',
-        'bukti_transfer' => 'required|file',
-        'rekening_id' => 'required|integer',
-        'kabupaten_id' => 'required|integer',
-      ]
-    );
-
-    // Jika validasi gagal
-    if ($validator->fails()) {
-      return response()->json(['message' => 'Validation error', 'errors' => $validator->errors()], 422);
-    }
-
-    try {
-      // Mengambil data yang diperlukan dari request
-      $data = $request->only([
-        'kabupaten_id',
-        'rekening_id',
+public function store(Request $request)
+{
+      // Validasi input
+      $validator = Validator::make($request->all(), [
+          'akta_pendirian' => 'required|file',
+          'npwp_perusahaan' => 'required|file',
+          'nib' => 'nullable|file',
+          'pjbu' => 'nullable|file',
+          'data_pengurus_pemegang_saham' => 'nullable|file',
+          'alamat_email_badan_usaha' => 'required|email',
+          'kabupaten_id' => 'required|integer',
+          'rekening_id' => 'required|integer',
+          'bukti_transfer' => 'required|file',
+          'logo_badan_usaha' => 'nullable|file'
       ]);
 
-      // Menentukan direktori berdasarkan user_id
-      $userId = Auth::id();
-      $basePath = "kta/{$userId}"; // Path untuk user
-
-      // Daftar field yang menyimpan file
-      $fileFields = [
-        'formulir_permohonan',
-        'pernyataan_kebenaran',
-        'pengesahan_menkumham',
-        'akta_pendirian',
-        'akta_perubahan',
-        'npwp_perusahaan',
-        'surat_domisili',
-        'ktp_pengurus',
-        'logo',
-        'foto_direktur',
-        'npwp_pengurus_akta',
-        'bukti_transfer'
-      ];
-
-      // Memeriksa dan menyimpan file yang ada
-      foreach ($fileFields as $field) {
-        if ($request->hasFile($field)) {
-          // Menyimpan file dengan nama asli ke dalam folder user_id di disk storage
-          $originalName = $request->file($field)->getClientOriginalName();
-          $data[$field] = $request->file($field)->storeAs($basePath, $originalName, 'local');
-        }
+      if ($validator->fails()) {
+          return response()->json(['message' => 'Validation error', 'errors' => $validator->errors()], 422);
       }
 
-      // Menambahkan user_id ke data yang akan disimpan
-      $data['user_id'] = $userId;
+      try {
+          $userId = Auth::id();
+          $basePath = "kta/{$userId}"; // Direktori penyimpanan berdasarkan user_id
 
-      // Mengecek apakah pengguna sudah memiliki pendaftaran KTA sebelumnya yang statusnya ditolak
-      $existingKTA = KTA::where('user_id', $userId)->where('status_diterima', 'rejected')->first();
+          // Daftar file yang akan disimpan
+          $fileFields = [
+              'akta_pendirian',
+              'npwp_perusahaan',
+              'nib',
+              'pjbu',
+              'data_pengurus_pemegang_saham',
+              'bukti_transfer',
+              'logo_badan_usaha'
+          ];
 
-      if ($existingKTA) {
-        // Jika ada pendaftaran KTA yang ditolak, update data yang ada
-        $existingKTA->update($data);
-        $message = 'The KTA application is updated after rejection.';
-      } else {
-        // Jika tidak ada pendaftaran yang ditolak sebelumnya, buat data KTA baru
-        $existingKTA = KTA::create($data);
-        $message = 'The KTA application has been successfully submitted.';
+          $data = $request->only([
+              'kabupaten_id',
+              'rekening_id',
+              'alamat_email_badan_usaha'
+          ]);
+
+          // Menyimpan file yang diunggah
+          foreach ($fileFields as $field) {
+              if ($request->hasFile($field)) {
+                  $originalName = $request->file($field)->getClientOriginalName();
+                  $data[$field] = $request->file($field)->storeAs($basePath, $originalName, 'local');
+              }
+          }
+
+          // Menambahkan user_id ke data
+          $data['user_id'] = $userId;
+
+          // Mengecek apakah pengguna memiliki KTA yang ditolak sebelumnya
+          $existingKTA = KTA::where('user_id', $userId)
+              ->where('status_diterima', 'rejected')
+              ->first();
+
+          if ($existingKTA) {
+              // Jika ada KTA yang ditolak, update data
+              $existingKTA->update($data);
+              $message = 'Pengajuan KTA diperbarui setelah penolakan.';
+          } else {
+              // Jika tidak ada, buat data KTA baru
+              $data['status_diterima'] = 'pending';
+              $data['status_aktif'] = 'will_expire';
+              $data['tanggal_diterima'] = null;
+              $data['expired_at'] = null;
+              $data['status_perpanjangan_kta'] = null;
+              $data['komentar'] = null;
+              $data['can_reapply'] = false;
+              $data['rejection_reason'] = null;
+              $data['rejection_date'] = null;
+
+              $existingKTA = KTA::create($data);
+              $message = 'Pengajuan KTA berhasil dikirim.';
+          }
+
+          return response()->json(['message' => $message, 'kta' => $existingKTA], 201);
+      } catch (\Exception $e) {
+          return response()->json(['message' => 'Terjadi kesalahan pada server', 'error' => $e->getMessage()], 500);
       }
-
-      return response()->json(['message' => $message, 'kta' => $existingKTA], 201);
-    } catch (\Exception $e) {
-      return response()->json(['message' => 'Terjadi kesalahan pada server', 'error' => $e->getMessage()], 500);
-    }
   }
 
-  public function extend(Request $request, $id)
-  {
+public function extend(Request $request, $id)
+{
     $request->validate([
       'bukti_transfer' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
     ]);
@@ -144,8 +141,8 @@ class KtaController extends Controller
   // ----------ADMIN CONTROLLER----------\\
 
   // Fungsi untuk menyetujui KTA
-  public function approveKTA(Request $request, $id)
-  {
+public function approveKTA(Request $request, $id)
+{
     try {
       // Validasi input
       $validated = $request->validate([
@@ -251,124 +248,131 @@ class KtaController extends Controller
     }
   }
 
-  public function allPending(Request $request)
-  {
-    try {
-      // Ambil parameter filter opsional dari request
-      $status = $request->query('status', 'pending', 'rejected'); // 'null' untuk melihat semua status
+public function allPending()
+{
+      try {
+          // Query hanya data dengan status_diterima = 'pending'
+          $registrants = KTA::select(
+              'kta.user_id',
+              'kta.id',
+              'users.nama_perusahaan',
+              'users.nama_direktur',
+              'users.alamat_perusahaan',
+              'users.email',
+              'kta.status_diterima',
+              'kta.status_aktif',
+              'kta.tanggal_diterima',
+              'kta.expired_at',
+              'kta.rejection_date',
+              'kta.komentar',
+              'kta.created_at',
+              'kota_kabupaten.nama as kota_kabupaten'
+          )
+              ->join('users', 'kta.user_id', '=', 'users.id')
+              ->join('kota_kabupaten', 'kta.kabupaten_id', '=', 'kota_kabupaten.id')
+              ->where('kta.status_diterima', 'pending') // Hanya ambil yang pending
+              ->orderBy('kta.created_at', 'desc')
+              ->get();
+  
+          return response()->json([
+              'success' => true,
+              'message' => 'Data pendaftaran pending berhasil diambil.',
+              'data' => $registrants,
+          ], 200);
+      } catch (\Exception $exception) {
+          return response()->json([
+              'success' => false,
+              'message' => 'Terjadi kesalahan saat mengambil data pendaftaran pending.',
+              'error' => $exception->getMessage(),
+          ], 500);
+      }
+  }
 
-      // Query data pendaftaran
-      $query = KTA::select(
-        'ktas.user_id',
-        'ktas.id',
+public function index()
+{
+      $ktas = KTA::select(
+              'kta.id',
+              'users.nama_perusahaan',
+              'users.nama_direktur',
+              'users.alamat_perusahaan',
+              'users.email',
+              'kta.logo_badan_usaha as logo',
+              'kota_kabupaten.nama as kota_kabupaten',
+              'kta.status_aktif',
+              'kta.tanggal_diterima',
+              'kta.expired_at'
+          )
+          ->join('users', 'kta.user_id', '=', 'users.id')
+          ->join('kota_kabupaten', 'kta.kabupaten_id', '=', 'kota_kabupaten.id')
+          ->where('kta.status_diterima', 'approve')
+          ->get();
+  
+      return response()->json($ktas);
+  }
+  
+public function show($id)
+{
+    $kta = KTA::select(
+        'users.nama_perusahaan',
+        'users.nama_direktur',
+        'users.nama_penanggung_jawab',
+        'users.alamat_perusahaan',
+        'users.email',
+        'kta.logo_badan_usaha as logo',
+        'kta.status_aktif',
+        'kta.tanggal_diterima',
+        'kta.expired_at',
+        'kota_kabupaten.nama as kota_kabupaten'
+    )
+    ->join('users', 'kta.user_id', '=', 'users.id')
+    ->join('kota_kabupaten', 'kta.kabupaten_id', '=', 'kota_kabupaten.id')
+    ->where('kta.id', $id)
+    ->where('kta.status_diterima', 'approve')
+    ->first();
+
+    if (!$kta) {
+        return response()->json(['message' => 'KTA not found or not approved'], 404);
+    }
+
+    return response()->json($kta, 200);
+}
+
+public function search(Request $request)
+{
+    $searchTerm = $request->input('search'); // Ambil input pencarian
+
+    $ktas = KTA::select(
+        'kta.id',
         'users.nama_perusahaan',
         'users.nama_direktur',
         'users.alamat_perusahaan',
         'users.email',
-        'ktas.status_diterima',
-        'ktas.status_aktif',
-        'ktas.tanggal_diterima',
-        'ktas.expired_at',
-        'ktas.rejection_date',
-        'ktas.komentar',
-        'ktas.created_at',
+        'kta.logo_badan_usaha as logo',
+        'kta.status_aktif',
+        'kta.tanggal_diterima',
+        'kta.expired_at',
         'kota_kabupaten.nama as kota_kabupaten'
-      )
-        ->join('users', 'ktas.user_id', '=', 'users.id')
-        ->join('kota_kabupaten', 'ktas.kabupaten_id', '=', 'kota_kabupaten.id');
-
-      // Filter berdasarkan status (jika diberikan)
-      if (!is_null($status)) {
-        $query->where('ktas.status_diterima', $status);
-      }
-
-      // Urutkan berdasarkan tanggal pendaftaran terbaru
-      $registrants = $query->orderBy('ktas.created_at', 'desc')->get();
-
-      return response()->json([
-        'success' => true,
-        'message' => 'Registration data has been successfully retrieved.',
-        'data' => $registrants,
-      ], 200);
-    } catch (\Exception $exception) {
-      // Tangani error
-      return response()->json([
-        'success' => false,
-        'message' => 'An error occurred while retrieving registration data.',
-        'error' => $exception->getMessage(),
-      ], 500);
-    }
-  }
-
-  public function index()
-  {
-    $ktas = KTA::select(
-      'ktas.id',
-      'users.nama_perusahaan',
-      'users.nama_direktur',
-      'users.alamat_perusahaan',
-      'users.email',
-      'ktas.logo',
-      'ktas.status_aktif',
-      'ktas.tanggal_diterima',
-      'ktas.expired_at',
-      'kota_kabupaten.nama as kota_kabupaten'
     )
-      ->join('users', 'ktas.user_id', '=', 'users.id')
-      ->join('kota_kabupaten', 'ktas.kabupaten_id', '=', 'kota_kabupaten.id')
-      ->where('ktas.status_diterima', 'approve')
-      ->get();
-
-    return response()->json($ktas);
-  }
-
-  // Fungsi untuk mendapatkan detail KTA berdasarkan ID
-  public function show($id)
-  {
-    $kta = KTA::select(
-      'users.nama_perusahaan',
-      'users.nama_direktur',
-      'users.nama_penanggung_jawab',
-      'users.alamat_perusahaan',
-      'users.email',
-      'ktas.logo',
-      'ktas.status_aktif',
-      'ktas.tanggal_diterima',
-      'ktas.expired_at',
-      'kota_kabupaten.nama as kota_kabupaten'
-    )
-      ->join('users', 'ktas.user_id', '=', 'users.id')
-      ->join('kota_kabupaten', 'ktas.kabupaten_id', '=', 'kota_kabupaten.id')
-      ->where('ktas.id', $id)
-      ->where('ktas.status_diterima', 'approve')
-      ->first();
-
-    if (!$kta) {
-      return response()->json(['message' => 'KTA not found or not approved'], 404);
-    }
-
-    return response()->json($kta, 200);
-  }
-
-  // Fungsi untuk mencari KTA berdasarkan parameter yang ditentukan
-  public function search(Request $request)
-  {
-    $searchTerm = $request->input('search'); // Ambil input pencarian
-
-    $ktas = KTA::whereHas('user', function ($query) use ($searchTerm) {
-      $query->where('nama_perusahaan', 'like', '%' . $searchTerm . '%')
-        ->orWhere('alamat_perusahaan', 'like', '%' . $searchTerm . '%')
-        ->orWhere('email', 'like', '%' . $searchTerm . '%');
-    })->get(); // Query untuk mencari berdasarkan nama_perusahaan, alamat_perusahaan, dan email
+    ->join('users', 'kta.user_id', '=', 'users.id')
+    ->join('kota_kabupaten', 'kta.kabupaten_id', '=', 'kota_kabupaten.id')
+    ->where(function ($query) use ($searchTerm) {
+        $query->where('users.nama_perusahaan', 'like', '%' . $searchTerm . '%')
+            ->orWhere('users.alamat_perusahaan', 'like', '%' . $searchTerm . '%')
+            ->orWhere('users.email', 'like', '%' . $searchTerm . '%')
+            ->orWhere('kta.status_aktif', 'like', '%' . $searchTerm . '%');
+    })
+    ->where('kta.status_diterima', 'approve')
+    ->get(); 
 
     if ($ktas->isEmpty()) {
-      return response()->json(['message' => 'KTA tidak ditemukan'], 404);
+        return response()->json(['message' => 'KTA not found'], 404);
     }
 
-    return response()->json($ktas);
-  }
-  public function downloadKTAFiles($id)
-  {
+    return response()->json($ktas, 200);
+}
+
+public function downloadKTAFiles($id)
+{
     try {
       // Lokasi folder file KTA berdasarkan ID KTA
       $directoryPath = "kta/{$id}"; // Menggunakan ktaId untuk folder path
@@ -436,43 +440,55 @@ class KtaController extends Controller
   }
 
   public function uploadKta(Request $request, $id)
-  {
+{
     // Menemukan data KTA berdasarkan ID
     $kta = KTA::findOrFail($id);
 
-    // Validasi file yang diunggah (misalnya hanya menerima file dengan tipe tertentu)
+    // Validasi file yang diunggah (hanya menerima PDF/JPG/PNG dan max 2MB)
     $validator = Validator::make($request->all(), [
-      'kta_file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:2048', // Mengatur validasi file
+        'kta_file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:2048',
     ]);
 
     if ($validator->fails()) {
-      return response()->json(['message' => 'File tidak valid.', 'errors' => $validator->errors()], 422);
+        return response()->json([
+            'message' => 'File tidak valid.',
+            'errors' => $validator->errors()
+        ], 422);
     }
 
     try {
-      // Memeriksa apakah ada file yang diunggah
-      if ($request->hasFile('kta_file')) {
-        // Mengambil file dari request
-        $file = $request->file('kta_file');
+        if ($request->hasFile('kta_file')) {
+            $file = $request->file('kta_file');
 
-        // Membuat nama file yang unik untuk diunggah
-        $fileName = 'kta_' . $id . '.' . $file->getClientOriginalExtension();
+            // Folder penyimpanan berdasarkan user_id
+            $folderPath = "kta/{$id}";
 
-        // Menyimpan file ke dalam folder 'kta' pada storage public
-        $filePath = $file->storeAs('kta', $fileName, 'public');
+            // Membuat nama file unik agar tidak tertimpa
+            $fileName = 'kta_' . time() . '.' . $file->getClientOriginalExtension();
 
-        // Memperbarui informasi file pada KTA
-        $kta->update([
-          'kta_file' => $filePath,
-        ]);
+            // Simpan file ke dalam storage -> app -> kta -> user_id
+            $filePath = $file->storeAs($folderPath, $fileName);
 
-        return response()->json(['message' => 'KTA uploaded successfully']);
-      } else {
-        return response()->json(['message' => 'No files uploaded.'], 400);
-      }
+            // Simpan path ke database (tanpa 'storage/app')
+            $kta->update([
+                'kta_file' => $filePath,
+            ]);
+
+            return response()->json([
+                'message' => 'KTA uploaded successfully',
+                'file_path' => $filePath
+            ]);
+        } else {
+            return response()->json([
+                'message' => 'No file uploaded.'
+            ], 400);
+        }
     } catch (\Exception $e) {
-      // Menangani error jika terjadi masalah saat proses penyimpanan
-      return response()->json(['message' => 'An error occurred while uploading the file.', 'error' => $e->getMessage()], 500);
+        Log::error('Error uploading KTA file for ID ' . $id . ': ' . $e->getMessage());
+        return response()->json([
+            'message' => 'An error occurred while uploading the file.',
+            'error' => $e->getMessage()
+        ], 500);
     }
-  }
+}
 }

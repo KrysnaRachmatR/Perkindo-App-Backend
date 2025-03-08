@@ -10,24 +10,20 @@ class KTA extends Model
 {
     use HasFactory;
 
-    protected $table = 'ktas';
+    protected $table = 'kta';
 
     protected $fillable = [
-        'formulir_permohonan',
-        'pernyataan_kebenaran',
-        'pengesahan_menkumham',
         'akta_pendirian',
-        'akta_perubahan',
         'npwp_perusahaan',
-        'surat_domisili',
-        'ktp_pengurus',
-        'logo',
-        'foto_direktur',
-        'npwp_pengurus_akta',
-        'bukti_transfer',
+        'nib',
+        'pjbu',
+        'data_pengurus_pemegang_saham',
+        'alamat_email_badan_usaha',
         'kabupaten_id',
-        'user_id',
         'rekening_id',
+        'bukti_transfer',
+        'logo_badan_usaha',
+        'user_id',
         'status_diterima',
         'status_aktif',
         'tanggal_diterima',
@@ -40,12 +36,21 @@ class KTA extends Model
         'rejection_date'
     ];
 
-    protected $cast = [
+    protected $casts = [
+        'tanggal_diterima' => 'datetime',
+        'expired_at' => 'datetime',
+        'rejection_date' => 'datetime',
         'can_reapply' => 'boolean',
-        'rejection_date' => 'date'
     ];
 
-    // Relasi ke model KotaKabupaten
+    protected $attributes = [
+        'status_perpanjangan_kta' => 'pending',
+        'status_diterima' => 'pending',
+        'status_aktif' => 'will_expire',
+        'can_reapply' => false,
+    ];
+
+    // Relasi ke model KotaKabupaten (Kabupaten)
     public function kabupaten()
     {
         return $this->belongsTo(KotaKabupaten::class, 'kabupaten_id');
@@ -54,94 +59,84 @@ class KTA extends Model
     // Relasi ke model User
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->select('id');
+    }
+    // Relasi ke model Rekening
+    public function rekening()
+    {
+        return $this->belongsTo(RekeningTujuan::class, 'rekening_id');
     }
 
-    // Memeriksa apakah KTA masih aktif
+    // Mengecek apakah KTA masih aktif
     public function isActive()
     {
-        if (!$this->tanggal_diterima) {
-            return false;
-        }
-
-        // Jika tanggal kedaluwarsa lebih dari sekarang
-        return now()->lessThanOrEqualTo(Carbon::parse($this->expired_at));
+        return $this->expired_at && Carbon::now()->lessThanOrEqualTo($this->expired_at);
     }
 
     // Memperpanjang KTA
     public function extendKta($buktiTransfer)
     {
-        $this->status_perpanjangan_kta = 'pending';
-        $this->bukti_transfer = $buktiTransfer;
-        $this->save();
+        $this->update([
+            'status_perpanjangan_kta' => 'pending',
+            'bukti_transfer' => $buktiTransfer,
+        ]);
     }
 
-    // Menerima KTA dan mengatur tanggal diterima
+    // Menerima KTA
     public function acceptKta()
     {
-        $this->status_diterima = 'approve';
-        $this->tanggal_diterima = now();
-        $this->status_aktif = 'active';
-        $this->expired_at = now()->addYear();
-        $this->save();
+        $this->update([
+            'status_diterima' => 'approve',
+            'tanggal_diterima' => Carbon::now(),
+            'status_aktif' => 'active',
+            'expired_at' => Carbon::now()->addYear(),
+        ]);
     }
 
     // Menolak KTA dengan komentar
     public function rejectKta($komentar)
     {
-        $this->status_diterima = 'rejected';
-        $this->komentar = $komentar;
-        $this->save();
+        $this->update([
+            'status_diterima' => 'rejected',
+            'komentar' => $komentar,
+        ]);
     }
 
-    // Mengatur KTA sebagai expired jika sudah melewati tanggal expired
+    // Mengatur status KTA menjadi expired jika sudah melewati tanggal expired
     public function checkExpiredStatus()
     {
-        if ($this->expired_at && now()->greaterThan($this->expired_at)) {
-            $this->status_aktif = 'expired';
-            $this->save();
+        if ($this->expired_at && Carbon::now()->greaterThan($this->expired_at)) {
+            $this->update(['status_aktif' => 'expired']);
         }
-    }
-
-    // Relasi ke model RekeningTujuan
-    public function rekeningTujuan()
-    {
-        return $this->belongsTo(RekeningTujuan::class, 'rekening_id');
     }
 
     // Custom accessor untuk status KTA
     public function getStatusLabelAttribute()
     {
-        $labels = [
+        return [
             'approve' => 'Diterima',
             'rejected' => 'Ditolak',
             'pending' => 'Menunggu Persetujuan',
-        ];
-
-        return $labels[$this->status_diterima] ?? 'Status Tidak Diketahui';
+        ][$this->status_diterima] ?? 'Status Tidak Diketahui';
     }
 
     // Custom accessor untuk status perpanjangan KTA
     public function getStatusPerpanjanganLabelAttribute()
     {
-        $labels = [
+        return [
             'pending' => 'Menunggu Persetujuan',
             'approve' => 'Disetujui',
             'rejected' => 'Ditolak',
-        ];
-
-        return $labels[$this->status_perpanjangan_kta] ?? 'Status Tidak Diketahui';
+        ][$this->status_perpanjangan_kta] ?? 'Status Tidak Diketahui';
     }
 
     // Custom accessor untuk status keberlanjutan KTA
     public function getStatusAktifLabelAttribute()
     {
-        $labels = [
+        return [
             'active' => 'Aktif',
             'expired' => 'Kedaluwarsa',
-            'will_expire' => 'Akan Kadaluarsa',
-        ];
-
-        return $labels[$this->status_aktif] ?? 'Status Tidak Diketahui';
+            'will_expire' => 'Akan Kedaluwarsa',
+        ][$this->status_aktif] ?? 'Status Tidak Diketahui';
     }
 }

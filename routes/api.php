@@ -61,7 +61,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/kta/all-pending', [KtaController::class, 'allPending']);
     Route::get('/kta/{id}', [KtaController::class, 'show']);
     Route::put('/kta/approve/{id}', [KTAController::class, 'approveKTA']);
-    Route::get('/download-kta/{userId}', [KtaController::class, 'downloadKTAFiles']);
+    Route::get('/kta/download/{userId}', [KtaController::class, 'downloadKTAFiles']);
     Route::post('/kta/upload/{id}', [KtaController::class, 'uploadKta']);
 
     //Validasi SBU Konstruksi

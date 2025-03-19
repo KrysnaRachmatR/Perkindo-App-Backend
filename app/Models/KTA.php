@@ -33,7 +33,8 @@ class KTA extends Model
         'kta_file',
         'can_reapply',
         'rejection_reason',
-        'rejection_date'
+        'rejection_date',
+        'no_kta'
     ];
 
     protected $casts = [

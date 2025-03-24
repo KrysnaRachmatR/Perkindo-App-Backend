@@ -29,7 +29,7 @@ class ProfileController extends Controller
   public function store(Request $request)
   {
     $request->validate([
-      'header_image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+      'header_image' => 'required|image|mimes:jpeg,png,jpg,gif',
       'title' => 'required|string|max:255',
       'section1' => 'required|string',
       'visi' => 'required|string',

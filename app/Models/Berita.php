@@ -11,6 +11,10 @@ class Berita extends Model
 
     protected $fillable = ['title', 'caption', 'image'];
 
+    protected $casts = [
+        'image' => 'string',
+    ];
+
     public function komentars()
     {
         return $this->hasMany(Komentar::class);

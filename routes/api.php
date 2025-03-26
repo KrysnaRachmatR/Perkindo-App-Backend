@@ -38,7 +38,7 @@ Route::get('/detail/klasifikasi', [KlasifikasiController::class, 'detail']);
 Route::get('/non-konstruksi/klasifikasis', [NonKonstruksiKlasifikasiController::class, 'index']);
 Route::get('/non-konstruksi/klasifikasis/{id}', [NonKonstruksiKlasifikasiController::class, 'show']);
 Route::get('/non-konstruksi/{klasifikasiId}/sub-klasifikasis', [NonKonstruksiSubKlasifikasiController::class, 'index']);
-
+Route::get('/detail', [UserDetailController::class, 'index']);
 // Route Auth (Login & Register)
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/register', [AuthController::class, 'register'])->name('register');
@@ -47,8 +47,6 @@ Route::post('/register', [AuthController::class, 'register'])->name('register');
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     // Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
-
-    Route::get('/detail', [UserDetailController::class, 'index']);
 
     //Search Fitur
     Route::get('/sbu/search', [SbusRegistrationController::class, 'search']);

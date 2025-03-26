@@ -18,92 +18,133 @@ class SbunRegistrationController extends Controller
 
   public function store(Request $request)
   {
-    try {
-      // Validasi data
-      $validator = Validator::make($request->all(), [
-        'akta_pendirian' => 'required|file|mimes:jpg,png,pdf|max:2048',
-        'npwp_perusahaan' => 'required|file|mimes:jpg,png,pdf|max:2048',
-        'ktp_penanggung_jawab' => 'required|file|mimes:jpg,png,pdf|max:2048',
-        'nomor_hp_penanggung_jawab' => 'required|numeric',
-        'ktp_pemegang_saham' => 'required|file|mimes:jpg,png,pdf|max:2048',
-        'npwp_pemegang_saham' => 'required|file|mimes:jpg,png,pdf|max:2048',
-        'email_perusahaan' => 'required|email',
-        'logo_perusahaan' => 'required|file|mimes:jpg,png|max:2048',
-        'non_konstruksi_klasifikasi_id' => 'required|integer|exists:non_konstruksi_klasifikasis,id',
-        'non_konstruksi_sub_klasifikasi_id' => 'required|integer|exists:non_konstruksi_sub_klasifikasis,id',
-        'bukti_transfer' => 'required|file|mimes:jpg,png,pdf|max:2048',
-        'rekening_id' => 'required|integer|exists:rekening_tujuan,id',
-      ]);
+      try {
+          // Validasi data
+          $validator = Validator::make($request->all(), [
+              'akta_pendirian' => 'required|file|mimes:jpg,png,pdf',
+              'npwp_perusahaan' => 'required|file|mimes:jpg,png,pdf',
+              'ktp_penanggung_jawab' => 'required|file|mimes:jpg,png,pdf',
+              'nomor_hp_penanggung_jawab' => 'required|numeric',
+              'ktp_pemegang_saham' => 'required|file|mimes:jpg,png,pdf',
+              'npwp_pemegang_saham' => 'required|file|mimes:jpg,png,pdf',
+              'email_perusahaan' => 'required|email',
+              'logo_perusahaan' => 'required|file|mimes:jpg,png',
+              'non_konstruksi_klasifikasi_id' => 'required|integer|exists:non_konstruksi_klasifikasis,id',
+              'non_konstruksi_sub_klasifikasi_id' => 'required|integer|exists:non_konstruksi_sub_klasifikasis,id',
+              'bukti_transfer' => 'required|file|mimes:jpg,png,pdf',
+              'rekening_id' => 'required|integer|exists:rekening_tujuan,id',
+          ]);
 
-      if ($validator->fails()) {
-        return response()->json(['errors' => $validator->errors()], 422);
-      }
+          if ($validator->fails()) {
+              return response()->json(['errors' => $validator->errors()], 422);
+          }
 
-      // Persiapkan folder penyimpanan
-      $userId = auth()->id();
-      $folderPath = "sbun/{$userId}";
+          $userId = auth()->id();
+          $klasifikasiId = $request->non_konstruksi_klasifikasi_id;
+          $subKlasifikasiId = $request->non_konstruksi_sub_klasifikasi_id;
 
-      // Proses upload file
-      $fileFields = [
-        'akta_pendirian',
-        'npwp_perusahaan',
-        'ktp_penanggung_jawab',
-        'ktp_pemegang_saham',
-        'npwp_pemegang_saham',
-        'logo_perusahaan',
-        'bukti_transfer',
-      ];
+          // Cek apakah user sudah memiliki pendaftaran sub klasifikasi yang masih pending
+          $existingPendingSbun = SbunRegistration::where('user_id', $userId)
+              ->where('non_konstruksi_sub_klasifikasi_id', $subKlasifikasiId)
+              ->where('status_diterima', 'pending')
+              ->exists();
 
-      $uploadedFiles = [];
-      foreach ($fileFields as $field) {
-        if ($request->hasFile($field)) {
-          $uploadedFiles[$field] = $request->file($field)->storeAs(
-            $folderPath,
-            "{$field}_" . time() . '.' . $request->file($field)->extension(),
-            'local'
+          if ($existingPendingSbun) {
+              return response()->json([
+                  'message' => 'Anda sudah memiliki pendaftaran sub klasifikasi ini yang masih pending.',
+              ], 403);
+          }
+
+          // Cek apakah user sudah memiliki sub klasifikasi yang sama dengan status approved
+          $existingApprovedSbun = SbunRegistration::where('user_id', $userId)
+              ->where('non_konstruksi_sub_klasifikasi_id', $subKlasifikasiId)
+              ->where('status_diterima', 'approved')
+              ->exists();
+
+          if ($existingApprovedSbun) {
+              return response()->json([
+                  'message' => 'Anda sudah memiliki sub klasifikasi ini yang telah disetujui.',
+              ], 403);
+          }
+
+          // Cek apakah user sudah memiliki pendaftaran sub klasifikasi dalam klasifikasi yang sama
+          $existingKlasifikasiSub = SbunRegistration::where('user_id', $userId)
+              ->where('non_konstruksi_klasifikasi_id', $klasifikasiId)
+              ->where('non_konstruksi_sub_klasifikasi_id', $subKlasifikasiId)
+              ->exists();
+
+          if ($existingKlasifikasiSub) {
+              return response()->json([
+                  'message' => 'Anda sudah memiliki pendaftaran untuk sub klasifikasi ini.',
+              ], 403);
+          }
+
+          // Persiapkan folder penyimpanan
+          $folderPath = "SBU-Non Konstruksi/{$userId}/{$subKlasifikasiId}_{$klasifikasiId}";
+
+          // Proses upload file
+          $fileFields = [
+              'akta_pendirian',
+              'npwp_perusahaan',
+              'ktp_penanggung_jawab',
+              'ktp_pemegang_saham',
+              'npwp_pemegang_saham',
+              'logo_perusahaan',
+              'bukti_transfer',
+          ];
+
+          $uploadedFiles = [];
+          foreach ($fileFields as $field) {
+              if ($request->hasFile($field)) {
+                  $uploadedFiles[$field] = $request->file($field)->storeAs(
+                      $folderPath,
+                      "{$field}_" . time() . '.' . $request->file($field)->extension(),
+                      'local'
+                  );
+              }
+          }
+
+          // Gabungkan data request dengan file yang diunggah
+          $data = array_merge(
+              $request->only([
+                  'nomor_hp_penanggung_jawab',
+                  'email_perusahaan',
+                  'non_konstruksi_klasifikasi_id',
+                  'non_konstruksi_sub_klasifikasi_id',
+                  'rekening_id',
+              ]),
+              $uploadedFiles
           );
-        }
+
+          $data['user_id'] = $userId;
+
+          // Cek pendaftaran SBUN sebelumnya dengan status rejected
+          $existingRejectedSbun = SbunRegistration::where('user_id', $userId)
+              ->where('status_diterima', 'rejected')
+              ->where('non_konstruksi_sub_klasifikasi_id', $subKlasifikasiId)
+              ->first();
+
+          if ($existingRejectedSbun) {
+              // Jika ada pendaftaran yang ditolak, perbarui data
+              $existingRejectedSbun->update($data);
+              $message = 'Pendaftaran SBUN diperbarui setelah penolakan.';
+          } else {
+              // Jika tidak ada, buat pendaftaran baru
+              $existingRejectedSbun = SbunRegistration::create($data);
+              $message = 'Pendaftaran SBUN berhasil.';
+          }
+
+          return response()->json([
+              'message' => $message,
+              'data' => $existingRejectedSbun,
+          ], 201);
+
+      } catch (\Exception $e) {
+          return response()->json([
+              'message' => 'Terjadi kesalahan',
+              'error' => $e->getMessage(),
+          ], 500);
       }
-
-      // Gabungkan data request dengan file yang diunggah
-      $data = array_merge(
-        $request->only([
-          'nomor_hp_penanggung_jawab',
-          'email_perusahaan',
-          'non_konstruksi_klasifikasi_id',
-          'non_konstruksi_sub_klasifikasi_id',
-          'rekening_id',
-        ]),
-        $uploadedFiles
-      );
-
-      $data['user_id'] = auth()->id();
-
-      // Cek pendaftaran SBUN sebelumnya dengan status rejected
-      $existingSbun = SbunRegistration::where('user_id', $userId)
-        ->where('status_diterima', 'rejected')
-        ->first();
-
-      if ($existingSbun) {
-        // Jika ada pendaftaran SBUN yang ditolak, perbarui data
-        $existingSbun->update($data);
-        $message = 'Pendaftaran SBUN diperbarui setelah penolakan.';
-      } else {
-        // Jika tidak ada, buat pendaftaran baru
-        $existingSbun = SbunRegistration::create($data);
-        $message = 'Pendaftaran SBUN berhasil';
-      }
-
-      return response()->json([
-        'message' => $message,
-        'data' => $existingSbun,
-      ], 201);
-    } catch (\Exception $e) {
-      return response()->json([
-        'message' => 'Terjadi kesalahan',
-        'error' => $e->getMessage(),
-      ], 500);
-    }
   }
 
   public function show($id)
@@ -120,183 +161,193 @@ class SbunRegistrationController extends Controller
 
   public function status(Request $request, $id)
   {
-    try {
-      // Validasi input untuk status pendaftaran
-      $validated = $request->validate([
-        'status_diterima' => 'required|in:approve,rejected,pending',
-        'komentar' => 'nullable|string|max:255', // Komentar opsional saat status tidak ditolak
-      ]);
+      try {
+          // Validasi input untuk status pendaftaran
+          $validated = $request->validate([
+              'status_diterima' => 'required|in:approve,rejected,pending',
+              'komentar' => 'nullable|string|max:255',
+          ]);
 
-      // Menemukan pendaftaran berdasarkan ID
-      $registration = SbunRegistration::find($id);
+          // Menemukan pendaftaran berdasarkan ID
+          $registration = SbunRegistration::find($id);
 
-      // Jika pendaftaran tidak ditemukan
-      if (!$registration) {
-        return response()->json([
-          'success' => false,
-          'message' => 'Pendaftaran tidak ditemukan.',
-        ], 404);
-      }
-
-      // Proses jika status ditolak (rejected)
-      if ($validated['status_diterima'] === 'rejected') {
-        // Validasi komentar saat status ditolak
-        if (empty($validated['komentar'])) {
-          return response()->json(['message' => 'Komentar diperlukan untuk status ditolak.'], 422);
-        }
-
-        // Update status pendaftaran menjadi "rejected"
-        $registration->status_diterima = 'rejected';
-        $registration->komentar = $validated['komentar']; // Menyimpan komentar
-        $registration->status_diterima = 'rejected'; // Status tidak aktif
-        $registration->rejection_date = now(); // Simpan tanggal penolakan
-        $registration->save();
-
-        // Daftar file yang harus dihapus jika ditolak
-        $fileFields = [
-          'akta_pendirian',
-          'npwp_perusahaan',
-          'ktp_penanggung_jawab',
-          'npwp_penanggung_jawab',
-          'foto_penanggung_jawab',
-          'ktp_pemegang_saham',
-          'npwp_pemegang_saham',
-          'logo_perusahaan',
-        ];
-
-        // Menghapus file dari storage jika status ditolak
-        foreach ($fileFields as $field) {
-          if ($registration->$field) {
-            Storage::disk('public')->delete($registration->$field);
+          if (!$registration) {
+              return response()->json([
+                  'success' => false,
+                  'message' => 'Pendaftaran tidak ditemukan.',
+              ], 404);
           }
-        }
 
-        return response()->json([
-          'success' => true,
-          'message' => 'Pendaftaran berhasil ditolak dan dokumen dihapus.',
-        ], 200);
-      }
+          // Cek apakah pendaftaran sudah ditolak sebelumnya
+          if ($registration->status_diterima === 'rejected') {
+              return response()->json([
+                  'success' => false,
+                  'message' => 'Pendaftaran sudah ditolak dan tidak dapat diubah. User harus mendaftar ulang.',
+              ], 400);
+          }
 
-      // Proses jika status disetujui (approve)
-      if ($validated['status_diterima'] === 'approve') {
-        // Periksa apakah sudah disetujui sebelumnya
-        if ($registration->status_diterima === 'approve') {
+          // Jika status ditolak (rejected)
+          if ($validated['status_diterima'] === 'rejected') {
+              if (empty($validated['komentar'])) {
+                  return response()->json(['message' => 'Komentar diperlukan untuk status ditolak.'], 422);
+              }
+
+              $registration->update([
+                  'status_diterima' => 'rejected',
+                  'komentar' => $validated['komentar'],
+                  'rejection_date' => now(),
+              ]);
+
+              // Daftar file yang harus dihapus
+              $fileFields = [
+                  'akta_pendirian',
+                  'npwp_perusahaan',
+                  'ktp_penanggung_jawab',
+                  'npwp_penanggung_jawab',
+                  'foto_penanggung_jawab',
+                  'ktp_pemegang_saham',
+                  'npwp_pemegang_saham',
+                  'logo_perusahaan',
+              ];
+
+              // Hapus file dari storage
+              foreach ($fileFields as $field) {
+                  if ($registration->$field) {
+                      Storage::disk('public')->delete($registration->$field);
+                  }
+              }
+
+              return response()->json([
+                  'success' => true,
+                  'message' => 'Pendaftaran berhasil ditolak dan dokumen dihapus.',
+              ], 200);
+          }
+
+          // Jika status disetujui (approve)
+          if ($validated['status_diterima'] === 'approve') {
+              if ($registration->status_diterima === 'approve') {
+                  return response()->json([
+                      'success' => false,
+                      'message' => 'Pendaftaran sudah disetujui sebelumnya.',
+                  ], 400);
+              }
+
+              $registration->update([
+                  'status_diterima' => 'approve',
+                  'tanggal_diterima' => now(),
+                  'status_aktif' => 'active',
+                  'expired_at' => now()->addYears(1),
+                  'can_reapply' => true,
+                  'komentar' => null,
+                  'rejection_date' => null,
+              ]);
+
+              return response()->json([
+                  'success' => true,
+                  'message' => 'Pendaftaran berhasil disetujui.',
+                  'data' => $registration->load(['user', 'nonKonstruksiKlasifikasi', 'nonKonstruksiSubKlasifikasi']),
+              ], 200);
+          }
+
+          // Jika status pending
+          if ($validated['status_diterima'] === 'pending') {
+              $registration->update(['status_diterima' => 'pending']);
+
+              return response()->json([
+                  'success' => true,
+                  'message' => 'Pendaftaran status telah diperbarui menjadi pending.',
+              ], 200);
+          }
+      } catch (\Illuminate\Validation\ValidationException $validationException) {
           return response()->json([
-            'success' => false,
-            'message' => 'Pendaftaran sudah disetujui sebelumnya.',
-          ], 400);
-        }
-
-        // Update status pendaftaran menjadi "approve"
-        $registration->status_diterima = 'approve';
-        $registration->tanggal_diterima = now(); // Menyimpan tanggal diterima saat disetujui
-        $registration->status_aktif = 'active'; // Menandai sebagai aktif
-        $registration->expired_at = now()->addYears(2); // Masa aktif 2 tahun
-        $registration->can_reapply = true; // Membolehkan pengajuan ulang jika masa berlaku habis
-        $registration->komentar = null; // Tidak ada komentar saat disetujui
-        $registration->rejection_date = null; // Menghapus tanggal penolakan
-        $registration->save();
-
-        return response()->json([
-          'success' => true,
-          'message' => 'Pendaftaran berhasil disetujui.',
-          'data' => $registration->load(['user', 'nonKonstruksiKlasifikasi', 'nonKonstruksiSubKlasifikasi']),
-        ], 200);
+              'success' => false,
+              'message' => 'Validasi gagal.',
+              'errors' => $validationException->errors(),
+          ], 422);
+      } catch (\Exception $exception) {
+          return response()->json([
+              'success' => false,
+              'message' => 'Terjadi kesalahan saat memperbarui status pendaftaran.',
+              'error' => $exception->getMessage(),
+          ], 500);
       }
-
-      // Proses jika status pending (opsional)
-      if ($validated['status_diterima'] === 'pending') {
-        $registration->status_diterima = 'pending';
-        $registration->save();
-
-        return response()->json([
-          'success' => true,
-          'message' => 'Pendaftaran status telah diperbarui menjadi pending.',
-        ], 200);
-      }
-    } catch (\Illuminate\Validation\ValidationException $validationException) {
-      // Tangani kesalahan validasi
-      return response()->json([
-        'success' => false,
-        'message' => 'Validasi gagal.',
-        'errors' => $validationException->errors(),
-      ], 422);
-    } catch (\Exception $exception) {
-      // Tangani kesalahan umum
-      return response()->json([
-        'success' => false,
-        'message' => 'Terjadi kesalahan saat memperbarui status pendaftaran.',
-        'error' => $exception->getMessage(),
-      ], 500);
-    }
   }
 
   public function downloadSBUNFiles($id)
   {
-    try {
-      // Lokasi folder file KTA berdasarkan ID KTA
-      $directoryPath = "sbun/{$id}"; // Menggunakan ktaId untuk folder path
+      try {
+          // Cari pendaftaran berdasarkan ID sbun_registration
+          $registration = SbunRegistration::find($id);
 
-      // Verifikasi apakah folder KTA ada di storage lokal
-      if (!Storage::disk('local')->exists($directoryPath)) {
-        return response()->json([
-          'success' => false,
-          'message' => 'Berkas untuk KTA ini tidak ditemukan.',
-        ], 404);
-      }
-
-      // Ambil semua file dalam folder KTA
-      $files = Storage::disk('local')->files($directoryPath);
-
-      // Jika folder tidak mengandung file
-      if (empty($files)) {
-        return response()->json([
-          'success' => false,
-          'message' => 'Folder tidak mengandung berkas.',
-        ], 404);
-      }
-
-      // Nama file ZIP
-      $zipFileName = "sbun_files_{$id}.zip";
-
-      // Membuat ZIP dan streaming ke browser
-      return response()->stream(function () use ($files) {
-        try {
-          // Membuat objek ZipStream
-          $zip = new ZipStream();
-
-          foreach ($files as $file) {
-            // Mendapatkan path file di storage lokal
-            $filePath = storage_path("app/{$file}");
-
-            // Validasi apakah file ada
-            if (!file_exists($filePath)) {
-              Log::warning("File tidak ditemukan: {$filePath}");
-              continue; // Skip jika file tidak ada
-            }
-
-            // Tambahkan file ke ZIP (pastikan nama file tanpa path penuh)
-            $zip->addFileFromPath(basename($file), $filePath);
+          if (!$registration) {
+              return response()->json([
+                  'success' => false,
+                  'message' => 'Pendaftaran tidak ditemukan.',
+              ], 404);
           }
 
-          // Menyelesaikan proses ZIP
-          $zip->finish();
-        } catch (\Exception $e) {
-          Log::error('Error creating ZIP file: ' . $e->getMessage());
-          throw $e; // Throw exception untuk ditangani oleh blok catch utama
-        }
-      }, 200, [
-        'Content-Type' => 'application/zip',
-        'Content-Disposition' => 'attachment; filename="' . $zipFileName . '"',
-      ]);
-    } catch (\Exception $e) {
-      // Log kesalahan dan kembalikan response error
-      Log::error('Error downloading KTA files for KTA ' . $id . ': ' . $e->getMessage());
-      return response()->json([
-        'success' => false,
-        'message' => 'Berkas untuk KTA ini tidak ditemukan.',
-      ], 404);
-    }
+          // Ambil userId, subKlasifikasiId, dan klasifikasiId dari database
+          $userId = $registration->user_id;
+          $subKlasifikasiId = $registration->sub_klasifikasi_id;
+          $klasifikasiId = $registration->klasifikasi_id;
+
+          // Format direktori penyimpanan file
+          $directoryPath = "SBU-Non Konstruksi/{$userId}/{$subKlasifikasiId}_{$klasifikasiId}";
+
+          // Periksa apakah folder ada di penyimpanan lokal
+          if (!Storage::disk('local')->exists($directoryPath)) {
+              return response()->json([
+                  'success' => false,
+                  'message' => 'ROKOKAN SEK LE, KETOK LEK MUMET LE, KODINGANMU UELEK LE',
+              ], 404);
+          }
+
+          // Ambil semua file dalam folder
+          $files = Storage::disk('local')->files($directoryPath);
+
+          if (empty($files)) {
+              return response()->json([
+                  'success' => false,
+                  'message' => 'Folder tidak mengandung berkas.',
+              ], 404);
+          }
+
+          // Nama file ZIP
+          $zipFileName = "sbun_files_{$id}.zip";
+
+          // Membuat ZIP dan mengirimkannya ke browser
+          return response()->stream(function () use ($files) {
+              try {
+                  $zip = new ZipStream();
+
+                  foreach ($files as $file) {
+                      $filePath = storage_path("app/{$file}");
+
+                      if (!file_exists($filePath)) {
+                          Log::warning("File tidak ditemukan: {$filePath}");
+                          continue;
+                      }
+
+                      $zip->addFileFromPath(basename($file), $filePath);
+                  }
+
+                  $zip->finish();
+              } catch (\Exception $e) {
+                  Log::error('Error creating ZIP file: ' . $e->getMessage());
+                  throw $e;
+              }
+          }, 200, [
+              'Content-Type' => 'application/zip',
+              'Content-Disposition' => 'attachment; filename="' . $zipFileName . '"',
+          ]);
+
+      } catch (\Exception $e) {
+          Log::error('Error downloading SBUN files for ID ' . $id . ': ' . $e->getMessage());
+          return response()->json([
+              'success' => false,
+              'message' => 'Terjadi kesalahan saat mengunduh berkas.',
+          ], 500);
+      }
   }
 
 

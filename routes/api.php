@@ -54,7 +54,8 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/sbun/search', [SbunRegistrationController::class, 'search']);
 
     //Validasi KTA
-    Route::get('/detail/all-user', [UserDetailController::class, 'index']);
+    Route::get('/detail/non-konstruksi', [UserDetailController::class, 'indexNonKonstruksi']);
+    Route::get('/detail/konstruksi', [UserDetailController::class, 'indexKonstruksi']);
     Route::get('/kta', [KtaController::class, 'index']);
     Route::get('/kta/all-pending', [KtaController::class, 'allPending']);
     Route::get('/kta/{id}', [KtaController::class, 'show']);

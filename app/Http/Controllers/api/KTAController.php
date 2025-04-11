@@ -21,15 +21,15 @@ class KtaController extends Controller
   public function store(Request $request)
 {
     $validator = Validator::make($request->all(), [
-        'akta_pendirian' => 'required|file|mimes:pdf,jpg,png',
-        'npwp_perusahaan' => 'required|file|mimes:pdf,jpg,png',
+        'akta_pendirian' => 'nullable|file|mimes:pdf,jpg,png',
+        'npwp_perusahaan' => 'nullable|file|mimes:pdf,jpg,png',
         'nib' => 'nullable|file|mimes:pdf,jpg,png',
         'pjbu' => 'nullable|file|mimes:pdf,jpg,png',
         'data_pengurus_pemegang_saham' => 'nullable|file|mimes:pdf,jpg,png',
         'alamat_email_badan_usaha' => 'required|email',
         'kabupaten_id' => 'required|integer|exists:kota_kabupaten,id',
         'rekening_id' => 'required|integer|exists:rekening_tujuan,id',
-        'bukti_transfer' => 'required|file|mimes:pdf,jpg,png',
+        'bukti_transfer' => 'nullable|file|mimes:pdf,jpg,png',
         'logo_badan_usaha' => 'nullable|file|mimes:jpg,png|max:1024'
     ]);
 
@@ -48,7 +48,6 @@ class KtaController extends Controller
             'bukti_transfer', 'logo_badan_usaha'
         ];
 
-        // Cek apakah user sudah memiliki KTA
         $existingKTA = KTA::where('user_id', $userId)->first();
 
         if ($existingKTA) {
@@ -65,35 +64,31 @@ class KtaController extends Controller
             }
 
             if ($existingKTA->status_diterima === 'rejected') {
-                // Hapus file lama sebelum menyimpan file baru
-                foreach ($fileFields as $field) {
-                    if ($existingKTA->$field) {
-                        Storage::delete($existingKTA->$field);
-                        $existingKTA->$field = null;
-                    }
-                }
-
-                // Simpan file yang baru diunggah
+                // Hanya update file jika ada file baru dikirim
                 foreach ($fileFields as $field) {
                     if ($request->hasFile($field)) {
+                        if ($existingKTA->$field) {
+                            Storage::delete($existingKTA->$field);
+                        }
                         $originalName = time() . '_' . $request->file($field)->getClientOriginalName();
                         $existingKTA->$field = $request->file($field)->storeAs($basePath, $originalName, 'local');
                     }
                 }
 
-                $existingKTA->update([
-                    'kabupaten_id' => $request->kabupaten_id,
-                    'rekening_id' => $request->rekening_id,
-                    'alamat_email_badan_usaha' => $request->alamat_email_badan_usaha,
-                    'status_diterima' => 'pending',
-                    'status_aktif' => 'will_expire',
-                    'tanggal_diterima' => null,
-                    'expired_at' => null,
-                    'komentar' => null,
-                    'can_reapply' => false,
-                    'rejection_reason' => null,
-                    'rejection_date' => null
-                ]);
+                // Update data lainnya
+                $existingKTA->kabupaten_id = $request->kabupaten_id;
+                $existingKTA->rekening_id = $request->rekening_id;
+                $existingKTA->alamat_email_badan_usaha = $request->alamat_email_badan_usaha;
+                $existingKTA->status_diterima = 'pending';
+                $existingKTA->status_aktif = 'will_expire';
+                $existingKTA->tanggal_diterima = null;
+                $existingKTA->expired_at = null;
+                $existingKTA->komentar = null;
+                $existingKTA->can_reapply = false;
+                $existingKTA->rejection_reason = null;
+                $existingKTA->rejection_date = null;
+
+                $existingKTA->save();
 
                 DB::commit();
                 return response()->json(['message' => 'Pengajuan KTA diperbarui setelah ditolak.', 'kta' => $existingKTA], 200);
@@ -105,7 +100,7 @@ class KtaController extends Controller
             ], 403);
         }
 
-        // Jika user belum pernah mengajukan KTA, buat baru
+        // Buat KTA baru
         $data = $request->only([
             'kabupaten_id', 'rekening_id', 'alamat_email_badan_usaha'
         ]);
@@ -130,6 +125,7 @@ class KtaController extends Controller
         return response()->json(['message' => 'Terjadi kesalahan pada server', 'error' => $e->getMessage()], 500);
     }
 }
+
   
   public function extend(Request $request, $id)
 {
@@ -291,6 +287,7 @@ class KtaController extends Controller
         ], 500);
     }
 }
+
 public function allPending()
 {
       try {
@@ -330,7 +327,7 @@ public function allPending()
           ], 500);
       }
   }
-
+  
   public function index()
   {
       $ktas = KTA::select(

@@ -12,7 +12,7 @@ class NonKonstruksiKlasifikasiController extends Controller
     // Menampilkan semua klasifikasi dengan sub klasifikasi
     public function index()
     {
-        $klasifikasis = NonKonstruksiKlasifikasi::with('subKlasifikasis')->get();
+        $klasifikasis = NonKonstruksiKlasifikasi::all();
 
         return response()->json([
             'success' => true,

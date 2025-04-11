@@ -8,66 +8,103 @@ use Illuminate\Http\Request;
 
 class UserDetailController extends Controller
 {
-  public function index()
-  {
-    // Mengambil data user beserta relasi SBU Konstruksi, Non-Konstruksi, dan KTA
+    public function indexNonKonstruksi()
+    {
+        // Ambil semua user yang punya sbunRegistrations dengan status "approve" dan status aktif "active"
+        $users = User::with([
+            'sbunRegistrations.nonKonstruksiKlasifikasi',
+            'sbunRegistrations.nonKonstruksiSubKlasifikasi'
+        ])->whereHas('sbunRegistrations', function ($query) {
+            $query->where('status_diterima', 'approve')
+                  ->where('status_aktif', 'active');
+        })->get();
+    
+        // Map user dan semua SBU Non Konstruksinya
+        $data = $users->map(function ($user, $index) {
+            $validRegistrations = $user->sbunRegistrations
+                ->where('status_diterima', 'approve')
+                ->where('status_aktif', 'active');
+    
+            $registrasiDetails = $validRegistrations->map(function ($registration) {
+                $tanggalDiterima = $registration->tanggal_diterima ?? null;
+                $tanggalExpired = $tanggalDiterima
+                    ? date('Y-m-d', strtotime("+1 years", strtotime($tanggalDiterima)))
+                    : '-';
+    
+                return [
+                    'klasifikasi' => $registration->nonKonstruksiKlasifikasi->nama ?? '-',
+                    'sub_klasifikasi' => $registration->nonKonstruksiSubKlasifikasi->nama ?? '-',
+                    'kode_sbu' => $registration->nonKonstruksiSubKlasifikasi->sbu_code ?? '-',
+                    'tanggal_diterima' => $tanggalDiterima ?? '-',
+                    'tanggal_expired' => $tanggalExpired,
+                    'status' => $registration->status_aktif ?? 'inactive',
+                ];
+            });
+    
+            return [
+                'no' => $index + 1,
+                'nama_perusahaan' => $user->nama_perusahaan,
+                'nama_direktur' => $user->nama_direktur,
+                'nama_penanggung_jawab' => $user->nama_penanggung_jawab,
+                'alamat_perusahaan' => $user->alamat_perusahaan,
+                'sbu_non_konstruksi' => $registrasiDetails,
+            ];
+        });
+    
+        return response()->json([
+            'status' => 'success',
+            'data' => $data
+        ]);
+    }
+
+    public function indexKonstruksi()
+{
+    // Ambil semua user yang punya sbukRegistrations yang sudah disetujui dan aktif
     $users = User::with([
-      'sbusRegistrations.konstruksiKlasifikasi',
-      'sbusRegistrations.konstruksiSubKlasifikasi',
-      'sbunRegistrations.nonKonstruksiKlasifikasi',
-      'sbunRegistrations.nonKonstruksiSubKlasifikasi',
-      'KTA'
-    ])->get();
+        'sbusRegistrations.konstruksiKlasifikasi',
+        'sbusRegistrations.konstruksiSubKlasifikasi'
+    ])->whereHas('sbusRegistrations', function ($query) {
+        $query->where('status_diterima', 'approve')
+              ->where('status_aktif', 'active');
+    })->get();
 
-    // Mapping data user dan relasi ke dalam array yang terstruktur
-    $data = $users->map(function ($user) {
-      $sbuKonstruksi = $user->sbusRegistrations->first();  // Ambil SBU Konstruksi pertama
-      $sbunNonKonstruksi = $user->sbunRegistrations->first(); // Ambil SBU Non Konstruksi pertama
-      $ktaStatus = $user->KTA->status_diterima ?? 'N/A'; // Status KTA (jika ada)
-      $ktaDiterima = $user->KTA->tanggal_diterima ?? 'N/A'; // Tanggal diterima KTA (jika ada)
-      $sbusDiterima = $sbuKonstruksi->status_aktif ?? 'N/A'; // Status aktif SBU Konstruksi (jika ada)
-      $sbunDiterima = $sbunNonKonstruksi->status_aktif ?? 'N/A'; // Status aktif SBU Non Konstruksi (jika ada)
+    // Mapping data untuk setiap user
+    $data = $users->map(function ($user, $index) {
+        $validRegistrations = $user->sbukRegistrations
+            ->where('status_diterima', 'approve')
+            ->where('status_aktif', 'active');
 
-      // Tentukan status KTA
-      $status = ($ktaStatus == 'pending') ? 'rejected' : 'accepted';
+        $registrasiDetails = $validRegistrations->map(function ($registration) {
+            $tanggalDiterima = $registration->tanggal_diterima ?? null;
+            $tanggalExpired = $tanggalDiterima
+                ? date('Y-m-d', strtotime("+3 years", strtotime($tanggalDiterima)))
+                : '-';
 
-      // Ambil semua klasifikasi dan sub-klasifikasi berdasarkan tipe SBU
-      $klasifikasi_sbus = $user->sbusRegistrations->map(function ($sbu) {
-        return $sbu->konstruksiKlasifikasi->nama ?? 'N/A';
-      })->toArray();
+            return [
+                'klasifikasi' => $registration->konstruksiKlasifikasi->nama ?? '-',
+                'sub_klasifikasi' => $registration->konstruksiSubKlasifikasi->nama ?? '-',
+                'kode_sbu' => $registration->konstruksiSubKlasifikasi->sbu_code ?? '-',
+                'tanggal_diterima' => $tanggalDiterima ?? '-',
+                'tanggal_expired' => $tanggalExpired,
+                'status' => $registration->status_aktif ?? 'inactive',
+            ];
+        });
 
-      $sub_klasifikasi_sbus = $user->sbusRegistrations->map(function ($sbu) {
-        return $sbu->konstruksiSubKlasifikasi->nama ?? 'N/A';
-      })->toArray();
-
-      $klasifikasi_sbun = $user->sbunRegistrations->map(function ($sbun) {
-        return $sbun->nonKonstruksiKlasifikasi->nama ?? 'N/A';
-      })->toArray();
-
-      $sub_klasifikasi_sbun = $user->sbunRegistrations->map(function ($sbun) {
-        return $sbun->nonKonstruksiSubKlasifikasi->nama ?? 'N/A';
-      })->toArray();
-
-      return [
-        'nama_perusahaan' => $user->nama_perusahaan,
-        'nama_direktur' => $user->nama_direktur,
-        'nama_penanggung_jawab' => $user->nama_penanggung_jawab,
-        'alamat_perusahaan' => $user->alamat_perusahaan,
-        'status_KTA' => $status,
-        'tanggal_diterima' => $ktaDiterima,
-        'status_SBU_Konstruksi' => $sbusDiterima,
-        'status_SBU_Non_Konstruksi' => $sbunDiterima,
-        'klasifikasi_sbus' => $klasifikasi_sbus,
-        'sub_klasifikasi_sbus' => $sub_klasifikasi_sbus,
-        'klasifikasi_sbun' => $klasifikasi_sbun,
-        'sub_klasifikasi_sbun' => $sub_klasifikasi_sbun,
-      ];
+        return [
+            'no' => $index + 1,
+            'nama_perusahaan' => $user->nama_perusahaan,
+            'nama_direktur' => $user->nama_direktur,
+            'nama_penanggung_jawab' => $user->nama_penanggung_jawab,
+            'alamat_perusahaan' => $user->alamat_perusahaan,
+            'sbu_konstruksi' => $registrasiDetails,
+        ];
     });
 
-    // Return response JSON
     return response()->json([
-      'status' => 'success',
-      'data' => $data
+        'status' => 'success',
+        'data' => $data
     ]);
-  }
+}
+
+    
 }

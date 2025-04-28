@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\SbunRegistration;
+use App\Models\NonKonstruksiKlasifikasi;
+use App\Models\NonKonstruksiSubKlasifikasi;
 use Illuminate\Support\Facades\Log;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -272,84 +274,83 @@ public function status(Request $request, $id)
       ], 200);
   }
   
+  public function downloadSBUNFiles($registrationId)
+{
+    try {
+        // Cari pendaftaran berdasarkan ID pendaftaran
+        $registration = SbunRegistration::find($registrationId);
 
-  public function downloadSBUNFiles($id)
-  {
-      try {
-          // Cari pendaftaran berdasarkan ID sbun_registration
-          $registration = SbunRegistration::find($id);
+        if (!$registration) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pendaftaran tidak ditemukan.',
+            ], 404);
+        }
 
-          if (!$registration) {
-              return response()->json([
-                  'success' => false,
-                  'message' => 'Pendaftaran tidak ditemukan.',
-              ], 404);
-          }
+        // Ambil data user_id, klasifikasi dan sub-klasifikasi
+        $userId = $registration->user_id;
+        $subKlasifikasiId = $registration->non_konstruksi_sub_klasifikasi_id;
+        $klasifikasiId = $registration->non_konstruksi_klasifikasi_id;
 
-          // Ambil userId, subKlasifikasiId, dan klasifikasiId dari database
-          $userId = $registration->user_id;
-          $subKlasifikasiId = $registration->sub_klasifikasi_id;
-          $klasifikasiId = $registration->klasifikasi_id;
+        // Path folder
+        $folderPath = storage_path("app/SBU-Non Konstruksi/{$userId}/{$subKlasifikasiId}_{$klasifikasiId}");
 
-          // Format direktori penyimpanan file
-          $directoryPath = "SBU-Non Konstruksi/{$userId}/{$subKlasifikasiId}_{$klasifikasiId}";
+        if (!is_dir($folderPath)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Folder dokumen untuk klasifikasi dan sub-klasifikasi ini tidak ditemukan.',
+            ], 404);
+        }
 
-          // Periksa apakah folder ada di penyimpanan lokal
-          if (!Storage::disk('local')->exists($directoryPath)) {
-              return response()->json([
-                  'success' => false,
-                  'message' => 'ROKOKAN SEK LE, KETOK LEK MUMET LE, KODINGANMU UELEK LE',
-              ], 404);
-          }
+        // Pastikan folder menyimpan file, bukan kosong
+        $files = array_diff(scandir($folderPath), ['.', '..']);
+        if (empty($files)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Folder ditemukan, tetapi tidak ada file untuk diunduh.',
+            ], 404);
+        }
 
-          // Ambil semua file dalam folder
-          $files = Storage::disk('local')->files($directoryPath);
+        // Nama file ZIP
+        $zipPath = storage_path("app/SBU-Non Konstruksi/{$userId}_{$klasifikasiId}_{$subKlasifikasiId}_sbun.zip");
 
-          if (empty($files)) {
-              return response()->json([
-                  'success' => false,
-                  'message' => 'Folder tidak mengandung berkas.',
-              ], 404);
-          }
+        // Hapus file ZIP lama kalau ada
+        if (file_exists($zipPath)) {
+            unlink($zipPath);
+        }
 
-          // Nama file ZIP
-          $zipFileName = "sbun_files_{$id}.zip";
+        // Buat file ZIP
+        $zip = new ZipArchive();
+        if ($zip->open($zipPath, ZipArchive::CREATE) !== TRUE) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal membuat file ZIP.',
+            ], 500);
+        }
 
-          // Membuat ZIP dan mengirimkannya ke browser
-          return response()->stream(function () use ($files) {
-              try {
-                  $zip = new ZipStream();
+        // Tambahkan file ke dalam ZIP
+        foreach ($files as $file) {
+            $filePath = $folderPath . DIRECTORY_SEPARATOR . $file;
+            if (is_file($filePath)) {
+                $zip->addFile($filePath, $file); // nama dalam zip tetap sama
+            }
+        }
 
-                  foreach ($files as $file) {
-                      $filePath = storage_path("app/{$file}");
+        $zip->close();
 
-                      if (!file_exists($filePath)) {
-                          Log::warning("File tidak ditemukan: {$filePath}");
-                          continue;
-                      }
+        // Kirim file ke user
+        return response()->download($zipPath)->deleteFileAfterSend(true);
 
-                      $zip->addFileFromPath(basename($file), $filePath);
-                  }
+    } catch (\Exception $e) {
+        \Log::error('Download error: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Terjadi kesalahan saat mengunduh berkas.',
+        ], 500);
+    }
+}
 
-                  $zip->finish();
-              } catch (\Exception $e) {
-                  Log::error('Error creating ZIP file: ' . $e->getMessage());
-                  throw $e;
-              }
-          }, 200, [
-              'Content-Type' => 'application/zip',
-              'Content-Disposition' => 'attachment; filename="' . $zipFileName . '"',
-          ]);
-
-      } catch (\Exception $e) {
-          Log::error('Error downloading SBUN files for ID ' . $id . ': ' . $e->getMessage());
-          return response()->json([
-              'success' => false,
-              'message' => 'Terjadi kesalahan saat mengunduh berkas.',
-          ], 500);
-      }
-  }
-
+  
   public function index()
   {
     // Menampilkan daftar pendaftaran SBUN
@@ -359,66 +360,64 @@ public function status(Request $request, $id)
 
   public function allPending(Request $request)
   {
-    try {
-      // Mengambil status dari query parameter, default ke 'pending' jika tidak ada
-      $status = $request->query('status', 'pending', 'rejected'); // hanya satu nilai default
-
-      // Memulai query
-      $query = SbunRegistration::select(
-        'sbun_registration.user_id',
-        'sbun_registration.id',
-        'users.nama_perusahaan',
-        'users.nama_direktur',
-        'users.alamat_perusahaan',
-        'users.email',
-        'sbun_registration.nomor_hp_penanggung_jawab',
-        'sbun_registration.non_konstruksi_klasifikasi_id',
-        'sbun_registration.non_konstruksi_sub_klasifikasi_id',
-        'sbun_registration.rekening_id',
-        'sbun_registration.bukti_transfer',
-        'sbun_registration.status_diterima',
-        'sbun_registration.status_aktif',
-        'sbun_registration.tanggal_diterima',
-        'sbun_registration.komentar'
-      )
-        ->join('users', 'sbun_registration.user_id', '=', 'users.id');
-
-      // Menambahkan kondisi berdasarkan status
-      // Pastikan status yang diterima adalah salah satu dari 'pending', 'rejected', 'approve'
-      if (in_array($status, ['pending', 'rejected', 'approve'])) {
-        $query->where('sbun_registration.status_diterima', $status);
-      } else {
-        // Jika status tidak valid, kembalikan error
-        return response()->json([
-          'success' => false,
-          'message' => 'Status tidak valid. Pilih salah satu dari: pending, rejected, approve.'
-        ], 422);
+      try {
+          $status = $request->query('status', 'pending');
+  
+          // Validasi nilai status
+          if (!in_array($status, ['pending', 'rejected', 'approve'])) {
+              return response()->json([
+                  'success' => false,
+                  'message' => 'Status tidak valid. Pilih salah satu dari: pending, rejected, approve.'
+              ], 422);
+          }
+  
+          $query = DB::table('sbun_registration as sbun')
+              ->select(
+                  'sbun.user_id',
+                  'sbun.id',
+                  'users.nama_perusahaan',
+                  'users.nama_direktur',
+                  'users.alamat_perusahaan',
+                  'users.email',
+                  'sbun.nomor_hp_penanggung_jawab',
+                  'klasifikasi.nama as nama_klasifikasi',
+                  'sub_klasifikasi.nama as nama_sub_klasifikasi',
+                  'sub_klasifikasi.sbu_code',
+                  'rekening.nama_bank as nama_rekening',
+                  'sbun.bukti_transfer',
+                  'sbun.status_diterima',
+                  'sbun.status_aktif',
+                  'sbun.tanggal_diterima',
+                  'sbun.created_at',
+                  DB::raw("DATE_ADD(sbun.tanggal_diterima, INTERVAL 3 YEAR) as expired_at"),
+                  'sbun.komentar'
+              )
+              ->join('users', 'sbun.user_id', '=', 'users.id')
+              ->leftJoin('non_konstruksi_klasifikasis as klasifikasi', 'sbun.non_konstruksi_klasifikasi_id', '=', 'klasifikasi.id')
+              ->leftJoin('non_konstruksi_sub_klasifikasis as sub_klasifikasi', 'sbun.non_konstruksi_sub_klasifikasi_id', '=', 'sub_klasifikasi.id')
+              ->leftJoin('rekening_tujuan as rekening', 'sbun.rekening_id', '=', 'rekening.id')
+              ->where('sbun.status_diterima', $status)
+              ->orderBy('sbun.created_at', 'desc');
+  
+          $registrations = $query->get();
+  
+          return response()->json([
+              'success' => true,
+              'message' => 'Daftar pendaftaran SBUN berhasil diambil',
+              'data' => $registrations,
+          ]);
+      } catch (\Exception $e) {
+          return response()->json([
+              'success' => false,
+              'message' => 'Terjadi kesalahan saat mengambil data',
+              'error' => $e->getMessage(),
+          ]);
       }
-
-      // Mengambil data
-      $registrations = $query->orderBy('sbun_registration.created_at', 'desc')->get();
-
-      // Menambahkan pengecekan jika tidak ada data
-
-      return response()->json([
-        'success' => true,
-        'message' => 'Daftar pendaftaran SBUN berhasil diambil',
-        'data' => $registrations,
-      ]);
-    } catch (\Exception $e) {
-      return response()->json([
-        'success' => false,
-        'message' => 'Terjadi kesalahan saat mengambil data',
-        'error' => $e->getMessage(),
-      ]);
-    }
   }
-
+  
   public function active(Request $request)
-  {
+{
     try {
-        $status = $request->query('status', 'approve');
-
         $query = DB::table('sbun_registration as sbun')
             ->select(
                 'sbun.user_id',
@@ -432,30 +431,28 @@ public function status(Request $request, $id)
                 'sub_klasifikasi.nama as nama_sub_klasifikasi',
                 'sub_klasifikasi.sbu_code',
                 'rekening.nama_bank as nama_rekening',
+                'rekening.nomor_rekening as nomor_rekening',
                 'sbun.bukti_transfer',
                 'sbun.status_diterima',
                 'sbun.status_aktif',
                 'sbun.tanggal_diterima',
-                DB::raw("DATE_ADD(sbun.tanggal_diterima, INTERVAL 3 YEAR) as expired_at"),
+                'sbun.expired_at',
                 'sbun.komentar'
             )
             ->join('users', 'sbun.user_id', '=', 'users.id')
             ->leftJoin('non_konstruksi_klasifikasis as klasifikasi', 'sbun.non_konstruksi_klasifikasi_id', '=', 'klasifikasi.id')
             ->leftJoin('non_konstruksi_sub_klasifikasis as sub_klasifikasi', 'sbun.non_konstruksi_sub_klasifikasi_id', '=', 'sub_klasifikasi.id')
-            ->leftJoin('rekening_tujuan as rekening', 'sbun.rekening_id', '=', 'rekening.id');
+            ->leftJoin('rekening_tujuan as rekening', 'sbun.rekening_id', '=', 'rekening.id')
+            ->whereIn('sbun.status_aktif', ['active', 'will_expire'])
 
-        // Filter berdasarkan status
-        if ($status === 'active') {
-            $query->where('sbun.status_aktif', 'active');
-        } elseif ($status === 'approve') {
-            $query->where('sbun.status_diterima', 'approve');
-        }
+            ->whereDate('sbun.expired_at', '>', now()) // hanya yang belum expired
+            ->orderBy('sbun.created_at', 'desc');
 
-        $registrations = $query->orderBy('sbun.created_at', 'desc')->get();
+        $registrations = $query->get();
 
         return response()->json([
             'success' => true,
-            'message' => 'Daftar pendaftaran SBUN berhasil diambil',
+            'message' => 'Daftar pendaftaran SBUN yang aktif berhasil diambil',
             'data' => $registrations,
         ]);
     } catch (\Exception $e) {
@@ -465,42 +462,49 @@ public function status(Request $request, $id)
             'error' => $e->getMessage(),
         ]);
     }
-  }
+}
+
   
   public function search(Request $request)
-  {
+{
     try {
-      $searchTerm = $request->input('search');
+        $searchTerm = $request->input('search');
 
-      // Validasi input pencarian
-      if (!$searchTerm) {
-        return response()->json(['message' => 'Parameter pencarian tidak diberikan.'], 400);
-      }
+        if (!$searchTerm) {
+            return response()->json(['message' => 'Parameter pencarian tidak diberikan.'], 400);
+        }
 
-      // Cari registrasi yang diterima dan filter berdasarkan nama perusahaan atau email
-      $registrations = SbunRegistration::where('status_aktif', 'active')
-        ->whereHas('user', function ($query) use ($searchTerm) {
-          $query->where('nama_perusahaan', 'like', '%' . $searchTerm . '%')
-            ->orWhere('email', 'like', '%' . $searchTerm . '%');
-        })
-        ->with('user') // Mengambil relasi user untuk data yang lebih lengkap
-        ->get();
+        $registrations = SbunRegistration::where('status_aktif', 'active')
+            ->where(function ($query) use ($searchTerm) {
+                $query->orWhere('non_konstruksi_klasifikasi_id', 'like', '%' . $searchTerm . '%')
+                    ->orWhere('non_konstruksi_sub_klasifikasi_id', 'like', '%' . $searchTerm . '%')
+                    ->orWhere('email_perusahaan', 'like', '%' . $searchTerm . '%')
+                    ->orWhere('nomor_hp_penanggung_jawab', 'like', '%' . $searchTerm . '%')
+                    ->orWhereHas('user', function ($userQuery) use ($searchTerm) {
+                        $userQuery->where('nama_perusahaan', 'like', '%' . $searchTerm . '%')
+                            ->orWhere('email', 'like', '%' . $searchTerm . '%');
+                    })
+                    ->orWhereHas('nonKonstruksiSubKlasifikasi', function ($subQuery) use ($searchTerm) {
+                        $subQuery->where('sbu_code', 'like', '%' . $searchTerm . '%');
+                    });
+            })
+            ->with(['user', 'nonKonstruksiSubKlasifikasi']) // tambahkan relasi ini agar hasil lengkap
+            ->get();
 
-      if ($registrations->isEmpty()) {
-        return response()->json(['message' => 'SBU tidak ditemukan.'], 404);
-      }
+        if ($registrations->isEmpty()) {
+            return response()->json(['message' => 'SBU tidak ditemukan.'], 404);
+        }
 
-      // Mengembalikan data registrasi dalam format JSON
-      return response()->json([
-        'message' => 'Data ditemukan.',
-        'data' => $registrations
-      ], 200);
+        return response()->json([
+            'message' => 'Data ditemukan.',
+            'data' => $registrations
+        ], 200);
+
     } catch (\Exception $e) {
-      // Menangani error jika terjadi kesalahan
-      return response()->json([
-        'message' => 'Terjadi kesalahan.',
-        'error' => $e->getMessage(),
-      ], 500);
+        return response()->json([
+            'message' => 'Terjadi kesalahan.',
+            'error' => $e->getMessage(),
+        ], 500);
     }
-  }
+}
 }

@@ -9,121 +9,193 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 use ZipStream\ZipStream;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class SbusRegistrationController extends Controller
 {
+
   public function store(Request $request)
-  {
+{
     try {
-      // Validasi data
-      $validator = Validator::make($request->all(), [
-        'akta_asosiasi_aktif_masa_berlaku' => 'required|file|mimes:jpg,png,pdf|max:2048',
-        'akta_perusahaan_pendirian' => 'required|file|mimes:jpg,png,pdf|max:2048',
-        'akta_perubahan' => 'required|file|mimes:jpg,png,pdf|max:2048',
-        'pengesahan_menkumham' => 'required|file|mimes:jpg,png,pdf|max:2048',
-        'nib_berbasis_resiko' => 'required|file|mimes:jpg,png,pdf|max:2048',
-        'ktp_pengurus' => 'required|file|mimes:jpg,png,pdf|max:2048',
-        'npwp_pengurus' => 'required|file|mimes:jpg,png,pdf|max:2048',
-        'SKK' => 'required|file|mimes:jpg,png,pdf|max:2048',
-        'ijazah_legalisir' => 'required|file|mimes:jpg,png,pdf|max:2048',
-        'PJTBU' => 'required|file|mimes:jpg,png,pdf|max:2048',
-        'PJKSBU' => 'required|file|mimes:jpg,png,pdf|max:2048',
-        'email_perusahaan' => 'required|email',
-        'kop_perusahaan' => 'required|file|mimes:jpg,png,pdf|max:2048',
-        'nomor_hp_penanggung_jawab' => 'required|numeric',
-        'foto_pas_direktur' => 'required|file|mimes:jpg,png,pdf|max:2048',
-        'surat_pernyataan_penanggung_jawab_mutlak' => 'required|file|mimes:jpg,png,pdf|max:2048',
-        'surat_pernyataan_SMAP' => 'required|file|mimes:jpg,png,pdf|max:2048',
-        'lampiran_TKK' => 'required|file|mimes:jpg,png,pdf|max:2048',
-        'neraca_keuangan_2_tahun_terakhir' => 'required|file|mimes:jpg,png,pdf|max:2048',
-        'akun_OSS' => 'required|file|mimes:jpg,png,pdf|max:2048',
-        'rekening_id' => 'required|integer|exists:rekening_tujuan,id',
-        'bukti_transfer' => 'required|file|mimes:jpg,png,pdf|max:2048',
-      ]);
+        $userId = auth()->id();
+        $user = auth()->user(); // Ambil user aktif
 
-      if ($validator->fails()) {
-        return response()->json(['errors' => $validator->errors()], 422);
-      }
+        // Ambil relasi KTA user
+        $kta = $user->kta;
 
-      // Persiapkan folder penyimpanan
-      $userId = auth()->id();
-      $namaPerusahaan = $request->input('email_perusahaan');
-      $folderPath = "sbus/{$userId}/{$namaPerusahaan}";
-
-      // Proses upload file
-      $fileFields = [
-        'akta_asosiasi_aktif_masa_berlaku',
-        'akta_perusahaan_pendirian',
-        'akta_perubahan',
-        'pengesahan_menkumham',
-        'nib_berbasis_resiko',
-        'ktp_pengurus',
-        'npwp_pengurus',
-        'SKK',
-        'ijazah_legalisir',
-        'PJTBU',
-        'PJKSBU',
-        'kop_perusahaan',
-        'foto_pas_direktur',
-        'surat_pernyataan_penanggung_jawab_mutlak',
-        'surat_pernyataan_SMAP',
-        'lampiran_TKK',
-        'neraca_keuangan_2_tahun_terakhir',
-        'akun_OSS',
-        'bukti_transfer'
-      ];
-
-      $uploadedFiles = [];
-      foreach ($fileFields as $field) {
-        if ($request->hasFile($field)) {
-          $uploadedFiles[$field] = $request->file($field)->storeAs(
-            $folderPath,
-            "{$field}_" . time() . '.' . $request->file($field)->extension(),
-            'local'
-          );
+        // Cek apakah user punya KTA dan statusnya approved
+        if (!$kta || $kta->status_aktif !== 'active') {
+            return response()->json([
+                'message' => 'Anda belum memiliki KTA aktif atau masih dalam proses.',
+            ], 403);
         }
-      }
 
-      // Gabungkan data request dengan file yang diunggah
-      $data = array_merge(
-        $request->only([
-          'nomor_hp_penanggung_jawab',
-          'email_perusahaan',
-          'rekening_id',
-          'konstruksi_klasifikasi_id',
-          'konstruksi_sub_klasifikasi_id'
-        ]),
-        $uploadedFiles
-      );
+        // Cek masa aktif KTA (1 tahun dari tanggal_diterima)
+        $tanggalDiterima = $kta->tanggal_diterima;
+        $tanggalExpired = Carbon::parse($tanggalDiterima)->addYear();
 
-      $data['user_id'] = $userId;
+        if (Carbon::now()->gt($tanggalExpired)) {
+            return response()->json([
+                'message' => 'KTA Anda sudah tidak aktif. Silakan perpanjang terlebih dahulu.',
+            ], 403);
+        }
 
-      // Cek pendaftaran SBUN sebelumnya dengan status rejected
-      $existingSbu = SBUSRegistrations::where('user_id', $userId)
-        ->where('status_diterima', 'rejected')
-        ->first();
+        // Validasi awal
+        $validator = Validator::make($request->all(), [
+            'klasifikasi_id' => 'required|integer|exists:klasifikasis,id',
+            'sub_klasifikasi_id' => 'required|integer|exists:sub_klasifikasis,id',
+        ]);
 
-      if ($existingSbu) {
-        // Jika ada pendaftaran SBUS yang ditolak, perbarui data
-        $existingSbu->update($data);
-        $message = 'Pendaftaran SBUS diperbarui setelah penolakan.';
-      } else {
-        // Jika tidak ada, buat pendaftaran baru
-        $existingSbu = SBUSRegistrations::create($data);
-        $message = 'Pendaftaran SBUS berhasil';
-      }
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
 
-      return response()->json([
-        'message' => $message,
-        'data' => $existingSbu,
-      ], 201);
+        $klasifikasiId = $request->klasifikasi_id;
+        $subKlasifikasiId = $request->sub_klasifikasi_id;
+
+        $existing = SBUSRegistrations::where('user_id', $userId)
+            ->where('konstruksi_sub_klasifikasi_id', $subKlasifikasiId)
+            ->first();
+
+        if ($existing) {
+            if (in_array($existing->status_diterima, ['pending', 'approved'])) {
+                return response()->json([
+                    'message' => $existing->status_diterima === 'pending'
+                        ? 'Pendaftaranmu masih pending dan sedang diproses.'
+                        : 'Sub klasifikasi ini sudah disetujui dan tidak bisa didaftarkan ulang.',
+                ], 403);
+            }
+        }
+
+        // Daftar field-file
+        $fileFields = [
+            'akta_asosiasi_aktif_masa_berlaku',
+            'akta_perusahaan_pendirian',
+            'akta_perubahan',
+            'pengesahan_menkumham',
+            'nib_berbasis_resiko',
+            'ktp_pengurus',
+            'npwp_pengurus',
+            'SKK',
+            'ijazah_legalisir',
+            'PJTBU',
+            'PJKSBU',
+            'kop_perusahaan',
+            'foto_pas_direktur',
+            'surat_pernyataan_penanggung_jawab_mutlak',
+            'surat_pernyataan_SMAP',
+            'lampiran_TKK',
+            'neraca_keuangan_2_tahun_terakhir',
+            'akun_OSS',
+            'bukti_transfer'
+        ];
+
+        $optionalFields = [
+            'nomor_hp_penanggung_jawab' => 'numeric',
+            'email_perusahaan' => 'email',
+            'rekening_id' => 'integer|exists:rekening_tujuan,id',
+        ];
+
+        // Validasi dinamis file & field opsional
+        $dynamicRules = [];
+
+        foreach ($fileFields as $field) {
+            if ($request->hasFile($field)) {
+                $dynamicRules[$field] = 'file|mimes:jpg,png,pdf';
+            }
+        }
+
+        foreach ($optionalFields as $field => $rule) {
+            if ($request->filled($field)) {
+                $dynamicRules[$field] = $rule;
+            }
+        }
+
+        if (!empty($dynamicRules)) {
+            $validator = Validator::make($request->all(), $dynamicRules);
+            if ($validator->fails()) {
+                return response()->json(['errors' => $validator->errors()], 422);
+            }
+        }
+
+        // Simpan file yang diupload
+        $folderPath = "SBU-Konstruksi/{$userId}/{$subKlasifikasiId}_{$klasifikasiId}";
+        $uploadedFiles = [];
+
+        foreach ($fileFields as $field) {
+            if ($request->hasFile($field)) {
+                $uploadedFiles[$field] = $request->file($field)->storeAs(
+                    $folderPath,
+                    "{$field}_" . time() . '.' . $request->file($field)->extension(),
+                    'local'
+                );
+            }
+        }
+
+        // Gabungkan data dari request dan file
+        $data = array_merge(
+            $request->only(array_keys($optionalFields)),
+            $uploadedFiles,
+            [
+                'konstruksi_klasifikasi_id' => $klasifikasiId,
+                'konstruksi_sub_klasifikasi_id' => $subKlasifikasiId,
+                'user_id' => $userId,
+            ]
+        );
+
+        // Jika sebelumnya ditolak, update
+        if ($existing && $existing->status_diterima === 'rejected') {
+            $existing->update($data);
+            return response()->json([
+                'message' => 'Pendaftaran yang sebelumnya ditolak berhasil diperbarui.',
+                'data' => $existing,
+            ], 200);
+        }
+
+        // Cegah duplikat sub klasifikasi
+        $alreadyOtherSub = SBUSRegistrations::where('user_id', $userId)
+            ->where('konstruksi_sub_klasifikasi_id', $subKlasifikasiId)
+            ->exists();
+
+        if ($alreadyOtherSub) {
+            return response()->json([
+                'message' => 'Anda sudah mendaftarkan sub klasifikasi ini sebelumnya.',
+            ], 403);
+        }
+
+        // Validasi field wajib untuk pendaftaran baru
+        $requiredFields = array_merge($fileFields, ['nomor_hp_penanggung_jawab', 'email_perusahaan', 'rekening_id']);
+
+        foreach ($requiredFields as $field) {
+            if (
+                (!$request->filled($field) && !$request->hasFile($field)) &&
+                !isset($uploadedFiles[$field])
+            ) {
+                return response()->json([
+                    'message' => "Kolom $field wajib diisi untuk pendaftaran baru.",
+                ], 422);
+            }
+        }
+
+        // Tambah data baru
+        $data['status_diterima'] = 'pending';
+        $data['status_aktif'] = null;
+
+        $new = SBUSRegistrations::create($data);
+
+        return response()->json([
+            'message' => 'Pendaftaran SBUS berhasil dibuat.',
+            'data' => $new,
+        ], 201);
+
     } catch (\Exception $e) {
-      return response()->json([
-        'message' => 'Terjadi kesalahan',
-        'error' => $e->getMessage(),
-      ], 500);
+        return response()->json([
+            'message' => 'Terjadi kesalahan.',
+            'error' => $e->getMessage(),
+        ], 500);
     }
-  }
+}
 
   public function show($id)
   {
@@ -250,109 +322,102 @@ class SbusRegistrationController extends Controller
   }
 
   public function pending(Request $request)
-  {
+{
     try {
-      // Mengambil status dari query parameter, default ke 'pending' jika tidak ada
-      $status = $request->query('status', 'pending'); // hanya satu nilai default
+        $status = $request->query('status', 'pending');
 
-      // Memulai query
-      $query = SBUSRegistrations::select(
-        'sbus_registration.user_id',
-        'sbus_registration.id',
-        'users.nama_perusahaan',
-        'users.nama_direktur',
-        'users.alamat_perusahaan',
-        'users.email',
-        'sbus_registration.nomor_hp_penanggung_jawab',
-        'sbus_registration.konstruksi_klasifikasi_id',
-        'sbus_registration.konstruksi_sub_klasifikasi_id',
-        'sbus_registration.rekening_id',
-        'sbus_registration.bukti_transfer',
-        'sbus_registration.status_diterima',
-        'sbus_registration.status_aktif',
-        'sbus_registration.tanggal_diterima',
-        'sbus_registration.komentar'
-      )
-        ->join('users', 'sbus_registration.user_id', '=', 'users.id');
+        // Validasi nilai status
+        if (!in_array($status, ['pending', 'rejected', 'approve'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Status tidak valid. Pilih salah satu dari: pending, rejected, approve.'
+            ], 422);
+        }
 
-      // Menambahkan kondisi berdasarkan status
-      if (in_array($status, ['pending', 'rejected', 'approve'])) {
-        $query->where('sbus_registration.status_diterima', $status);
-      } else {
-        // Jika status tidak valid, kembalikan error
+        // Menggunakan eager loading dengan 'with' untuk menghindari query join manual
+        $registrations = SBUSRegistrations::with([
+            'user', 
+            'konstruksiKlasifikasi', 
+            'konstruksiSubKlasifikasi', 
+            'rekening'
+        ])
+        ->where('status_diterima', $status)
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+        // Format data sesuai kebutuhan
+        $data = $registrations->map(function ($registration) {
+            return [
+                'user_id' => $registration->user_id,
+                'id' => $registration->id,
+                'nama_perusahaan' => $registration->user->nama_perusahaan,
+                'nama_direktur' => $registration->user->nama_direktur,
+                'alamat_perusahaan' => $registration->user->alamat_perusahaan,
+                'email' => $registration->user->email,
+                'nomor_hp_penanggung_jawab' => $registration->nomor_hp_penanggung_jawab,
+                'nama_klasifikasi' => $registration->konstruksiKlasifikasi ? $registration->konstruksiKlasifikasi->nama : null,
+                'nama_sub_klasifikasi' => $registration->konstruksiSubKlasifikasi ? $registration->konstruksiSubKlasifikasi->nama : null,
+                'sbu_code' => $registration->konstruksiSubKlasifikasi ? $registration->konstruksiSubKlasifikasi->sbu_code : null,
+                'nama_rekening' => $registration->rekening ? $registration->rekening->nama_bank : null,
+                'bukti_transfer' => $registration->bukti_transfer,
+                'status_diterima' => $registration->status_diterima,
+                'status_aktif' => $registration->status_aktif,
+                'tanggal_diterima' => $registration->tanggal_diterima,
+                'created_at' => $registration->created_at,
+                'expired_at' => $registration->expired_at,
+                'komentar' => $registration->komentar,
+            ];
+        });
+
         return response()->json([
-          'success' => false,
-          'message' => 'Status tidak valid. Pilih salah satu dari: pending, rejected, approve.'
-        ], 422);
-      }
-
-      // Mengambil data
-      $registrations = $query->orderBy('sbus_registration.created_at', 'desc')->get();
-
-      return response()->json([
-        'success' => true,
-        'message' => 'Daftar pendaftaran SBUS berhasil diambil',
-        'data' => $registrations,
-      ]);
+            'success' => true,
+            'message' => 'Daftar pendaftaran SBUS berhasil diambil',
+            'data' => $data,
+        ]);
     } catch (\Exception $e) {
-      return response()->json([
-        'success' => false,
-        'message' => 'Terjadi kesalahan saat mengambil data',
-        'error' => $e->getMessage(),
-      ]);
+        return response()->json([
+            'success' => false,
+            'message' => 'Terjadi kesalahan saat mengambil data',
+            'error' => $e->getMessage(),
+        ]);
     }
-  }
+}
 
-  public function active(Request $request)
-  {
-    try {
-      $status = $request->query('status', 'approve');
+public function active()
+{
+    $registrations = SBUSRegistrations::with(['user', 'konstruksiKlasifikasi', 'konstruksiSubKlasifikasi', 'rekening'])
+        ->where('status_aktif', ['active', 'will_expired']) // ✅ Filter hanya active & will_expired
+        ->latest()
+        ->get();
 
-      $query = SBUSRegistrations::select(
-        'sbus_registration.user_id',
-        'sbus_registration.id',
-        'users.nama_perusahaan',
-        'users.nama_direktur',
-        'users.alamat_perusahaan',
-        'users.email',
-        'sbus_registration.nomor_hp_penanggung_jawab',
-        'klasifikasis.nama as nama_klasifikasi',
-        'sub_klasifikasis.nama as nama_sub_klasifikasi',
-        'rekening_tujuan.nama_bank as nama_rekening',
-        'sbus_registration.bukti_transfer',
-        'sbus_registration.status_diterima',
-        'sbus_registration.status_aktif',
-        'sbus_registration.tanggal_diterima',
-        'sbus_registration.expired_at',
-        'sbus_registration.komentar'
-      )
-        ->join('users', 'sbus_registration.user_id', '=', 'users.id')
-        ->leftJoin('klasifikasis', 'sbus_registration.konstruksi_klasifikasi_id', '=', 'klasifikasis.id')
-        ->leftJoin('sub_klasifikasis', 'sbus_registration.konstruksi_sub_klasifikasi_id', '=', 'sub_klasifikasis.id')
-        ->leftJoin('rekening_tujuan', 'sbus_registration.rekening_id', '=', 'rekening_tujuan.id');
+    $formatted = $registrations->map(function ($item) {
+        return [
+            'id' => $item->id,
+            'user_id' => $item->user_id,
+            'nama_perusahaan' => $item->user->nama_perusahaan ?? null,
+            'nama_direktur' => $item->user->nama_direktur ?? null,
+            'alamat_perusahaan' => $item->user->alamat_perusahaan ?? null,
+            'email' => $item->user->email ?? null,
+            'nomor_hp_penanggung_jawab' => $item->nomor_hp_penanggung_jawab,
+            'nama_klasifikasi' => $item->konstruksiKlasifikasi->nama ?? null,
+            'nama_sub_klasifikasi' => $item->konstruksiSubKlasifikasi->nama ?? null,
+            'sbu_code' => $item->konstruksiSubKlasifikasi->sbu_code ?? null,
+            'nama_rekening' => $item->rekening->nama_bank ?? null,
+            'bukti_transfer' => $item->bukti_transfer,
+            'status_diterima' => $item->status_diterima,
+            'status_aktif' => $item->status_aktif,
+            'tanggal_diterima' => optional($item->tanggal_diterima)->format('Y-m-d'),
+            'expired_at' => optional($item->tanggal_diterima)->copy()->addYears(3)->format('Y-m-d'),
+            'komentar' => $item->komentar,
+            'created_at' => $item->created_at->format('Y-m-d H:i'),
+        ];
+    });
 
-      // Filter berdasarkan status
-      if ($status === 'active') {
-        $query->where('sbus_registration.status_aktif', 'active');
-      } elseif ($status === 'approve') {
-        $query->where('sbus_registration.status_diterima', 'approve');
-      }
-
-      $registrations = $query->orderBy('sbus_registration.created_at', 'desc')->get();
-
-      return response()->json([
+    return response()->json([
         'success' => true,
-        'message' => 'Daftar pendaftaran SBUS berhasil diambil',
-        'data' => $registrations,
-      ]);
-    } catch (\Exception $e) {
-      return response()->json([
-        'success' => false,
-        'message' => 'Terjadi kesalahan saat mengambil data',
-        'error' => $e->getMessage(),
-      ]);
-    }
-  }
+        'data' => $formatted,
+    ]);
+}
 
 
   public function downloadSBUSFiles($id)

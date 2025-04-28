@@ -19,6 +19,9 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SbunRegistrationController;
 use App\Http\Controllers\Api\UserDetailController;
 
+Route::get('/sbus/active', [SbusRegistrationController::class, 'active']);
+Route::get('/sbus/pending', [SbusRegistrationController::class, 'pending']);
+Route::get('/sbun/download/{registrationId}', [SbunRegistrationController::class, 'downloadSBUNFiles']);
 //Konten GET untuk Public
 Route::get('/agenda', [AgendaController::class, 'index']);
 Route::get('/agenda/{id}', [AgendaController::class, 'show']);
@@ -38,7 +41,8 @@ Route::get('/detail/klasifikasi', [KlasifikasiController::class, 'detail']);
 Route::get('/non-konstruksi/klasifikasis', [NonKonstruksiKlasifikasiController::class, 'index']);
 Route::get('/non-konstruksi/klasifikasis/{id}', [NonKonstruksiKlasifikasiController::class, 'show']);
 Route::get('/non-konstruksi/{klasifikasiId}/sub-klasifikasis', [NonKonstruksiSubKlasifikasiController::class, 'index']);
-Route::get('/detail', [UserDetailController::class, 'index']);
+Route::get('/detail-non', [UserDetailController::class, 'indexNonKonstruksi']);
+Route::get('/detail', [UserDetailController::class, 'indexKonstruksi']);
 // Route Auth (Login & Register)
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/register', [AuthController::class, 'register'])->name('register');
@@ -60,7 +64,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/kta/all-pending', [KtaController::class, 'allPending']);
     Route::get('/kta/{id}', [KtaController::class, 'show']);
     Route::put('/kta/approve/{id}', [KTAController::class, 'approveKTA']);
-    Route::get('/kta/download/{userId}', [KtaController::class, 'downloadKTAFiles']);
+    Route::get('/kta/download/{userId}', [KtaController::class, 'downloadFile']);
     Route::post('/kta/upload/{id}', [KtaController::class, 'uploadKta']);
 
     //Validasi SBU Konstruksi
@@ -73,8 +77,8 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/sbus/documents/download/{id}', [SbusRegistrationController::class, 'downloadSBUSDocuments']);
 
     Route::get('/sbus', [SbusRegistrationController::class, 'index']);
-    Route::get('/sbus/pending', [SbusRegistrationController::class, 'pending']);
-    Route::get('/sbus/active', [SbusRegistrationController::class, 'active']);
+    
+   
     Route::get('/sbus/{id}', [SbusRegistrationController::class, 'show']);
     Route::put('/sbus/{id}/status', [SbusRegistrationController::class, 'status']);
     Route::get('/sbus/{id}/download', [SbusRegistrationController::class, 'downloadSBUSFiles']);
@@ -85,7 +89,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/sbun/active', [SbunRegistrationController::class, 'active']);
     Route::get('/sbun/{userId}', [SbunRegistrationController::class, 'show']);
     Route::put('/sbun/{id}/status', [SbunRegistrationController::class, 'status']);
-    Route::get('/sbun/{id}/download', [SbunRegistrationController::class, 'downloadSBUNFiles']);
+    
 
     //Rekening Tujuan Routes
     Route::get('/rek/{id}', [RekeningController::class, 'show']);

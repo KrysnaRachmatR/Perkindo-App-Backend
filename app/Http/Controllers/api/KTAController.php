@@ -180,6 +180,58 @@ class KtaController extends Controller
   // ----------ADMIN CONTROLLER----------\\
 
   // Fungsi untuk menyetujui KTA
+
+  public function downloadFile($userId)
+  {
+      // Cek apakah user dengan ID ini ada
+      $user = User::findOrFail($userId);
+
+      // Tentukan direktori tempat dokumen KTA disimpan
+      $documentsPath = storage_path("app/kta/{$userId}");
+
+      // Cek apakah folder dokumen ada
+      if (!is_dir($documentsPath)) {
+          return response()->json(['error' => 'Dokumen tidak ditemukan.'], 404);
+      }
+
+      // Tentukan lokasi file zip yang akan disimpan
+      $zipFile = storage_path("app/kta/{$userId}_kta_documents.zip");
+
+      // Jika file zip sudah ada, hapus dulu sebelum membuat yang baru
+      if (file_exists($zipFile)) {
+          unlink($zipFile); // Menghapus file zip yang lama
+      }
+
+      // Inisialisasi ZipArchive
+      $zip = new ZipArchive();
+
+      // Cek apakah ZIP dapat dibuka untuk ditulis
+      if ($zip->open($zipFile, ZipArchive::CREATE) !== TRUE) {
+          return response()->json(['error' => 'Gagal membuat file ZIP. Pastikan direktori dapat ditulis.'], 500);
+      }
+
+      // Ambil semua file di direktori dokumen user
+      $files = scandir($documentsPath);
+
+      // Masukkan file ke dalam zip
+      foreach ($files as $file) {
+          if ($file === '.' || $file === '..') continue;
+
+          $filePath = $documentsPath . DIRECTORY_SEPARATOR . $file;
+
+          // Pastikan hanya file yang dimasukkan (bukan folder)
+          if (is_file($filePath)) {
+              $zip->addFile($filePath, basename($filePath));  // Menambahkan file ke ZIP
+          }
+      }
+
+      // Tutup file ZIP setelah selesai menambahkan file
+      $zip->close();
+
+      // Kirim file zip untuk di-download
+      return response()->download($zipFile);
+  }
+
   public function approveKTA(Request $request, $id)
 {
     try {
@@ -217,7 +269,7 @@ class KtaController extends Controller
                 'can_reapply' => false, // Tidak bisa daftar ulang
                 'komentar' => null, 
                 'rejection_date' => null,
-                'no_kta' => $validated['no_kta'], // Simpan nomor KTA
+                'no_kta' => $validated['no_kta'],
             ]);
 
             return response()->json([
@@ -332,12 +384,14 @@ public function allPending()
   {
       $ktas = KTA::select(
               'kta.id',
+              'kta.user_id',
               'users.nama_perusahaan',
               'users.nama_direktur',
               'users.nama_penanggung_jawab',
               'users.alamat_perusahaan',
               'users.email',
               'kta.kabupaten_id',
+              'kta.no_kta',
               'kota_kabupaten.nama as kota_kabupaten',
               'kta.status_aktif',
               'kta.status_diterima',

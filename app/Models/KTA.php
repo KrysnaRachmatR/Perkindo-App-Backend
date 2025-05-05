@@ -42,8 +42,10 @@ class KTA extends Model
         'expired_at' => 'datetime',
         'rejection_date' => 'datetime',
         'can_reapply' => 'boolean',
+        'pjbu' => 'array', 
+        'data_pengurus_pemegang_saham' => 'array',
     ];
-
+    
     protected $attributes = [
         'status_perpanjangan_kta' => 'pending',
         'status_diterima' => 'pending',

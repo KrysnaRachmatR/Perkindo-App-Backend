@@ -150,7 +150,8 @@ Route::middleware(['auth:sanctum', 'user'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     Route::post('/kta', [KtaController::class, 'store']);
-    Route::post('kta/{id}/extend', [KtaController::class, 'extend']);
+    Route::get('/kta/showDetail', [KtaController::class, 'checkDetail']);
+    Route::post('/kta/{id}/extend', [KtaController::class, 'extend']);
 
     Route::post('/sbus', [SbusRegistrationController::class, 'store']);
     Route::post('/sbun', [SbunRegistrationController::class, 'store']);

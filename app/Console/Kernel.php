@@ -23,7 +23,8 @@ class Kernel extends ConsoleKernel
     }
     protected function schedule(Schedule $schedule)
     {
+        $schedule->command('kta:update-status')->daily();
         $schedule->command('sbun:update-status')->daily();
+        $schedule->command('sbus:update-status')->daily();
     }
-
 }

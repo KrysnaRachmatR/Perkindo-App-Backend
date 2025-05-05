@@ -7,56 +7,93 @@ use App\Models\User;
 use App\Models\Admin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
    
-    public function register(Request $request) {
-        try {
-            $validatedData = $request->validate([
-                'nama_perusahaan' => 'required|string',
-                'nama_direktur' => 'required|string',
-                'nama_penanggung_jawab' => 'required|string',
-                'alamat_perusahaan' => 'required|string',
-                'email' => 'required|string|email|unique:users,email',
-                'password' => [
-                    'required',
-                    'string',
-                    'min:8',
-                    'confirmed',
-                    'regex:/^(?=.*[A-Z])(?=.*\d)(?=.*[.,!]).{8,}$/'
-                ],
-            ], [
-                'password.regex' => 'Password harus mengandung setidaknya satu huruf besar, satu angka, dan satu simbol (.,!).'
-            ]);
-    
-            $user = User::create([
-                'nama_perusahaan' => $validatedData['nama_perusahaan'],
-                'nama_direktur' => $validatedData['nama_direktur'],
-                'nama_penanggung_jawab' => $validatedData['nama_penanggung_jawab'],
-                'alamat_perusahaan' => $validatedData['alamat_perusahaan'],
-                'email' => $validatedData['email'],
-                'password' => Hash::make($validatedData['password']),
-            ]);
-    
-            return response()->json([
-                'message' => 'Registrasi berhasil!',
-                'user' => $user,
-            ], 201);
-    
-        } catch (ValidationException $e) {
-            return response()->json([
-                'message' => 'Validasi gagal!',
-                'errors' => $e->errors(),
-            ], 400);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Terjadi kesalahan saat registrasi!',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+    public function register(Request $request)
+{
+    try {
+        $validatedData = $request->validate([
+            'nama_perusahaan' => 'required|string',
+            'nama_direktur' => 'required|string',
+            'no_hp_direktur' => 'nullable|string',
+            'no_hp_perusahaan' => 'nullable|string',
+            'alamat_perusahaan' => 'required|string',
+            'logo_perusahaan' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+
+            'nama_penanggung_jawab' => 'required|string',
+            'no_hp_penanggung_jawab' => 'required|string',
+            'ktp_penanggung_jawab' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            'npwp_penanggung_jawab' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+
+            'nama_pemegang_saham' => 'required|string',
+            'no_hp_pemegang_saham' => 'required|string',
+            'ktp_pemegang_saham' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            'npwp_pemegang_saham' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+
+            'email' => 'required|email|unique:users,email',
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'confirmed',
+                'regex:/^(?=.*[A-Z])(?=.*\d)(?=.*[.,!]).{8,}$/'
+            ],
+        ], [
+            'password.regex' => 'Password harus mengandung setidaknya satu huruf besar, satu angka, dan satu simbol (.,!).'
+        ]);
+
+        $user = User::create([
+            'nama_perusahaan' => $validatedData['nama_perusahaan'],
+            'nama_direktur' => $validatedData['nama_direktur'],
+            'no_hp_direktur' => $validatedData['no_hp_direktur'] ?? null,
+            'no_hp_perusahaan' => $validatedData['no_hp_perusahaan'] ?? null,
+            'alamat_perusahaan' => $validatedData['alamat_perusahaan'],
+            'nama_penanggung_jawab' => $validatedData['nama_penanggung_jawab'],
+            'no_hp_penanggung_jawab' => $validatedData['no_hp_penanggung_jawab'] ?? null,
+            'nama_pemegang_saham' => $validatedData['nama_pemegang_saham'],
+            'no_hp_pemegang_saham' => $validatedData['no_hp_pemegang_saham'] ?? null,
+            'email' => $validatedData['email'],
+            'password' => Hash::make($validatedData['password']),
+        ]);
+
+        $folderPath = "data_user/{$user->id}";
+
+        $logoPath = $request->file('logo_perusahaan')?->store("{$folderPath}/logo_perusahaan");
+        $ktpPenanggungPath = $request->file('ktp_penanggung_jawab')?->store("{$folderPath}/ktp_penanggung_jawab");
+        $npwpPenanggungPath = $request->file('npwp_penanggung_jawab')?->store("{$folderPath}/npwp_penanggung_jawab");
+        $ktpPemegangPath = $request->file('ktp_pemegang_saham')?->store("{$folderPath}/ktp_pemegang_saham");
+        $npwpPemegangPath = $request->file('npwp_pemegang_saham')?->store("{$folderPath}/npwp_pemegang_saham");
+
+        $user->update([
+            'logo_perusahaan' => $logoPath,
+            'ktp_penanggung_jawab' => $ktpPenanggungPath,
+            'npwp_penanggung_jawab' => $npwpPenanggungPath,
+            'ktp_pemegang_saham' => $ktpPemegangPath,
+            'npwp_pemegang_saham' => $npwpPemegangPath,
+        ]);
+
+        return response()->json([
+            'message' => 'Registrasi berhasil!',
+            'user' => $user,
+        ], 201);
+
+    } catch (ValidationException $e) {
+        return response()->json([
+            'message' => 'Validasi gagal!',
+            'errors' => $e->errors(),
+        ], 400);
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'Terjadi kesalahan saat registrasi!',
+            'error' => $e->getMessage(),
+        ], 500);
     }
+}
         
     public function login(Request $request)
 {

@@ -2,103 +2,97 @@
 
 namespace App\Http\Controllers\Api;
 
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\KTA;
+use App\Models\SbunRegistration;
+use App\Models\SbusRegistrations;
 use Illuminate\Http\Request;
 
 class UserDetailController extends Controller
 {
-    public function indexNonKonstruksi()
+    public function getDashboardSummary()
     {
-        // Ambil semua user yang punya sbunRegistrations dengan status "approve" dan aktif
-        $users = User::with([
-            'sbunRegistrations.nonKonstruksiKlasifikasi',
-            'sbunRegistrations.nonKonstruksiSubKlasifikasi'
-        ])->whereHas('sbunRegistrations', function ($query) {
-            $query->where('status_diterima', 'approve')
-                  ->where('status_aktif', 'active');
-        })->get();
-    
-        $data = $users->map(function ($user, $index) {
-            $registrations = $user->sbunRegistrations
-                ->where('status_diterima', 'approve')
-                ->where('status_aktif', 'active')
-                ->map(function ($registration) {
-                    $tanggalDiterima = $registration->tanggal_diterima;
-                    $tanggalExpired = $tanggalDiterima
-                        ? \Carbon\Carbon::parse($tanggalDiterima)->addYear()->toDateString()
-                        : '-';
+        // === Total Aktif ===
+        $totalKtaAktif   = KTA::where('status_aktif', 'active')->count();
+        $totalSbusAktif  = SbusRegistrations::where('status_aktif', 'active')->count();
+        $totalSbunAktif  = SbunRegistration::where('status_aktif', 'active')->count();
 
-                    return [
-                        'klasifikasi' => $registration->nonKonstruksiKlasifikasi->nama ?? '-',
-                        'sub_klasifikasi' => $registration->nonKonstruksiSubKlasifikasi->nama ?? '-',
-                        'kode_sbu' => $registration->nonKonstruksiSubKlasifikasi->sbu_code ?? '-',
-                        'tanggal_diterima' => $tanggalDiterima ?? '-',
-                        'tanggal_expired' => $tanggalExpired,
-                        'status' => $registration->status_aktif ?? 'inactive',
-                    ];
-                });
+        // === Data Harian (per jam) ===
+        $today = Carbon::today();
+        $hours = collect(range(0, 23));
+        $ktaDaily = $this->getCountByHour(KTA::class, $today);
+        $sbusDaily = $this->getCountByHour(SbusRegistrations::class, $today);
+        $sbunDaily = $this->getCountByHour(SbunRegistration::class, $today);
 
-            return [
-                'no' => $index + 1,
-                'nama_perusahaan' => $user->nama_perusahaan,
-                'nama_direktur' => $user->nama_direktur,
-                'nama_penanggung_jawab' => $user->nama_penanggung_jawab,
-                'alamat_perusahaan' => $user->alamat_perusahaan,
-                'sbu_non_konstruksi' => $registrations,
-            ];
-        });
+        // === Data Bulanan (per hari) ===
+        $thisMonth = Carbon::now();
+        $daysInMonth = $thisMonth->daysInMonth;
+        $days = collect(range(1, $daysInMonth));
+        $ktaMonthly = $this->getCountByDay(KTA::class, $thisMonth);
+        $sbusMonthly = $this->getCountByDay(SbusRegistrations::class, $thisMonth);
+        $sbunMonthly = $this->getCountByDay(SbunRegistration::class, $thisMonth);
+
+        // === Data Tahunan (per bulan) ===
+        $months = collect(range(1, 12));
+        $ktaYearly = $this->getCountByMonth(KTA::class);
+        $sbusYearly = $this->getCountByMonth(SbusRegistrations::class);
+        $sbunYearly = $this->getCountByMonth(SbunRegistration::class);
 
         return response()->json([
-            'status' => 'success',
-            'data' => $data
+            'success' => true,
+            'total_aktif' => [
+                'kta'  => $totalKtaAktif,
+                'sbus' => $totalSbusAktif,
+                'sbun' => $totalSbunAktif,
+            ],
+            'chart' => [
+                'daily' => $hours->map(fn($hour) => [
+                    'hour' => $hour,
+                    'kta'  => $ktaDaily[$hour] ?? 0,
+                    'sbus' => $sbusDaily[$hour] ?? 0,
+                    'sbun' => $sbunDaily[$hour] ?? 0,
+                ]),
+                'monthly' => $days->map(fn($day) => [
+                    'day' => $day,
+                    'kta' => $ktaMonthly[$day] ?? 0,
+                    'sbus' => $sbusMonthly[$day] ?? 0,
+                    'sbun' => $sbunMonthly[$day] ?? 0,
+                ]),
+                'yearly' => $months->map(fn($month) => [
+                    'month' => Carbon::create()->month($month)->format('F'),
+                    'kta'   => $ktaYearly[$month] ?? 0,
+                    'sbus'  => $sbusYearly[$month] ?? 0,
+                    'sbun'  => $sbunYearly[$month] ?? 0,
+                ]),
+            ]
         ]);
     }
 
-    public function indexKonstruksi()
+    private function getCountByHour($model, $date)
     {
-        // Ambil semua user yang punya sbusRegistrations yang sudah disetujui dan aktif
-        $users = User::with([
-            'sbusRegistrations.konstruksiKlasifikasi',
-            'sbusRegistrations.konstruksiSubKlasifikasi'
-        ])->whereHas('sbusRegistrations', function ($query) {
-            $query->where('status_diterima', 'approve')
-                  ->where('status_aktif', 'active');
-        })->get();
-    
-        $data = $users->map(function ($user, $index) {
-            $registrations = $user->sbusRegistrations
-                ->where('status_diterima', 'approve')
-                ->where('status_aktif', 'active')
-                ->map(function ($registration) {
-                    $tanggalDiterima = $registration->tanggal_diterima;
-                    $tanggalExpired = $tanggalDiterima
-                        ? \Carbon\Carbon::parse($tanggalDiterima)->addYears(3)->toDateString()
-                        : '-';
+        return $model::whereDate('created_at', $date)
+            ->selectRaw('HOUR(created_at) as hour, COUNT(*) as total')
+            ->groupBy('hour')
+            ->pluck('total', 'hour');
+    }
 
-                    return [
-                        'klasifikasi' => $registration->konstruksiKlasifikasi->nama ?? '-',
-                        'sub_klasifikasi' => $registration->konstruksiSubKlasifikasi->nama ?? '-',
-                        'kode_sbu' => $registration->konstruksiSubKlasifikasi->sbu_code ?? '-',
-                        'tanggal_diterima' => $tanggalDiterima ?? '-',
-                        'tanggal_expired' => $tanggalExpired,
-                        'status' => $registration->status_aktif ?? 'inactive',
-                    ];
-                });
+    private function getCountByDay($model, $month)
+    {
+        return $model::whereYear('created_at', $month->year)
+            ->whereMonth('created_at', $month->month)
+            ->selectRaw('DAY(created_at) as day, COUNT(*) as total')
+            ->groupBy('day')
+            ->pluck('total', 'day');
+    }
 
-            return [
-                'no' => $index + 1,
-                'nama_perusahaan' => $user->nama_perusahaan,
-                'nama_direktur' => $user->nama_direktur,
-                'nama_penanggung_jawab' => $user->nama_penanggung_jawab,
-                'alamat_perusahaan' => $user->alamat_perusahaan,
-                'sbu_konstruksi' => $registrations,
-            ];
-        });
-
-        return response()->json([
-            'status' => 'success',
-            'data' => $data
-        ]);
+    private function getCountByMonth($model)
+    {
+        return $model::whereYear('created_at', now()->year)
+            ->selectRaw('MONTH(created_at) as month, COUNT(*) as total')
+            ->groupBy('month')
+            ->pluck('total', 'month');
     }
 }

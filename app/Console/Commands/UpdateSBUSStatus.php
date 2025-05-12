@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
@@ -12,22 +13,21 @@ class UpdateSBUStatus extends Command
 
     public function handle()
     {
-        $today = Carbon::now();
-        $sevenDaysLater = $today->copy()->addDays(7);
+        $today = Carbon::today(); // Lebih konsisten untuk perbandingan tanggal
+        $sevenDaysLater = $today->copy()->addDays(30);
 
-        // Update yang akan expired dalam 7 hari ke depan jadi "will_expired"
-        DB::table('sbus_registration')
+        // 1. Update ke "will_expired" jika expired dalam 30 hari ke depan
+        $willExpireCount = DB::table('sbus_registration')
             ->where('status_aktif', 'active')
-            ->whereDate('expired_at', '>', $today)
-            ->whereDate('expired_at', '<=', $sevenDaysLater)
+            ->whereBetween('expired_at', [$today->addDay(), $sevenDaysLater])
             ->update(['status_aktif' => 'will_expired']);
 
-        // Update yang sudah lewat tanggal expired jadi "expired"
-        DB::table('sbus_registration')
+        // 2. Update ke "expired" jika sudah melewati tanggal expired
+        $expiredCount = DB::table('sbus_registration')
             ->whereIn('status_aktif', ['active', 'will_expired'])
             ->whereDate('expired_at', '<=', $today)
             ->update(['status_aktif' => 'expired']);
 
-        $this->info('Status berhasil diperbarui ke will_expired dan expired.');
+        $this->info("Status diperbarui: {$willExpireCount} will_expired, {$expiredCount} expired.");
     }
 }

@@ -28,11 +28,15 @@ class User extends Authenticatable
         'npwp_pemegang_saham',
         'email',
         'password',
+        'is_pengurus',
+        'jabatan',
+        'tanggal_mulai_pengurus',
+        'tanggal_akhir_pengurus',
     ];
 
     protected $hidden = [
         'password',
-        'remember_token',
+        // 'remember_token',
     ];
 
     // Relasi ke KTA
@@ -51,5 +55,15 @@ class User extends Authenticatable
     public function sbunRegistrations()
     {
         return $this->hasMany(SbunRegistration::class, 'user_id');
+    }
+
+    public function meetings()
+    {
+        return $this->belongsToMany(Meeting::class, 'meeting_users');
+    }
+
+    public function pollResponses()
+    {
+        return $this->hasMany(PollResponse::class);
     }
 }

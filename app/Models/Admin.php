@@ -20,8 +20,13 @@ class Admin extends Model implements AuthenticatableContract
 
     protected $hidden = ['password'];
 
-    public function setPasswordAttribute($password)
+   public function setPasswordAttribute($password)
     {
         $this->attributes['password'] = Hash::make($password);
+    }
+
+     public function meetings()
+    {
+        return $this->hasMany(Meeting::class);
     }
 }

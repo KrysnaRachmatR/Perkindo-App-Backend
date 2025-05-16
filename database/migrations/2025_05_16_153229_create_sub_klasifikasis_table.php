@@ -11,9 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('sbun_registration', function (Blueprint $table) {
-            $table->timestamp('rejection_date')->nullable();
-            $table->boolean('can_reapply')->default(true);
+        Schema::create('sub_klasifikasis', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('klasifikasi_id')->constrained('klasifikasis')->onDelete('cascade');
+            $table->string('nama');
+            $table->string('sbu_code');
+            $table->timestamps();
         });
     }
 
@@ -22,8 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('sbun_registration', function (Blueprint $table) {
-            $table->dropColumn(['rejection_date', 'can_reapply']);
-        });
+        Schema::dropIfExists('sub_klasifikasis');
     }
 };

@@ -9,19 +9,20 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up()
+    public function up(): void
     {
         Schema::table('kta', function (Blueprint $table) {
-            $table->json('pjbu')->nullable()->change();
-            $table->json('data_pengurus_pemegang_saham')->nullable()->change();
+            $table->renameColumn('akta_perusahaan', 'npwp_perusahaan');
         });
     }
-    
-    public function down()
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
     {
         Schema::table('kta', function (Blueprint $table) {
-            $table->text('pjbu')->nullable()->change();
-            $table->text('data_pengurus_pemegang_saham')->nullable()->change();
+            $table->renameColumn('npwp_perusahaan', 'akta_perusahaan');
         });
-    }    
+    }
 };

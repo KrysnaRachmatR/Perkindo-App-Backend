@@ -11,9 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('sbus_registration', function (Blueprint $table) {
-            $table->timestamp('rejection_date')->nullable();
-            $table->boolean('can_reapply')->default(true);
+        Schema::create('kota_kabupaten', function (Blueprint $table) {
+            $table->id();
+            $table->string('nama');
+            $table->timestamps();
         });
     }
 
@@ -22,8 +23,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('sbus_registration', function (Blueprint $table) {
-            $table->dropColumn(['rejection_date', 'can_reapply']);
-        });
+        Schema::dropIfExists('kota_kabupaten');
     }
 };

@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\RekeningController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SbunRegistrationController;
 use App\Http\Controllers\Api\UserDetailController;
+use App\Http\Controllers\Api\MeetingController;
 
 //Konten GET untuk Public
 Route::get('/agenda', [AgendaController::class, 'index']);
@@ -47,6 +48,10 @@ Route::post('/register', [AuthController::class, 'register'])->name('register');
 
 // Middleware untuk Admin Only
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+    //SKRIPSI
+    Route::post('/meetings', [MeetingController::class, 'store']);
+    Route::post('/meetings/{id}/finalize', [MeetingFinalizationController::class, 'finalize']);
+
     // Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     
@@ -128,6 +133,8 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
 
 Route::middleware(['auth:sanctum', 'user'])->group(function () {
+    //SKRIPSI
+
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     Route::post('/kta', [KtaController::class, 'store']);
@@ -137,3 +144,9 @@ Route::middleware(['auth:sanctum', 'user'])->group(function () {
     Route::post('/sbus', [SbusRegistrationController::class, 'store']);
     Route::post('/sbun', [SbunRegistrationController::class, 'store']);
 });
+
+Route::middleware(['auth:sanctum', 'notulen'])->group(function () {
+    Route::post('/notes', [MeetingNoteController::class, 'store']);
+});
+
+    Route::post('/poll/respond', [PollingController::class, 'respond']);

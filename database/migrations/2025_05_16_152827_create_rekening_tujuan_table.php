@@ -11,8 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('kta', function (Blueprint $table) {
-            $table->string('no_kta')->nullable()->unique()->after('user_id');
+        Schema::create('rekening_tujuan', function (Blueprint $table) {
+            $table->id();
+            $table->string('nama_bank');
+            $table->string('nomor_rekening');
+            $table->string('atas_nama');
+            $table->timestamps();
         });
     }
 
@@ -21,8 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('kta', function (Blueprint $table) {
-            $table->dropColumn('no_kta');
-        });
+        Schema::dropIfExists('rekening_tujuan');
     }
 };

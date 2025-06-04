@@ -18,7 +18,9 @@ use App\Http\Controllers\Api\RekeningController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SbunRegistrationController;
 use App\Http\Controllers\Api\UserDetailController;
-use App\Http\Controllers\Api\MeetingController;
+use App\Http\Controllers\Api\RapatController;
+
+Route::get('/rapat', [RapatController::class, 'index']);
 
 //Konten GET untuk Public
 Route::get('/agenda', [AgendaController::class, 'index']);
@@ -49,8 +51,8 @@ Route::post('/register', [AuthController::class, 'register'])->name('register');
 // Middleware untuk Admin Only
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     //SKRIPSI
-    Route::post('/meetings', [MeetingController::class, 'store']);
-    Route::post('/meetings/{id}/finalize', [MeetingFinalizationController::class, 'finalize']);
+    Route::post('/rapat', [RapatController::class, 'store']);
+    Route::delete('/rapat/undangan/{id}', [RapatController::class, 'destroy']);
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
@@ -74,6 +76,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     //Validasi SBU Konstruksi
     Route::get('/sbus/pending', [SbusRegistrationController::class, 'pending']);
     Route::get('/sbus/active', [SbusRegistrationController::class, 'active']);
+    Route::get('/sbus/expired', [SbusRegistrationController::class, 'expired']);
     Route::put('/sbus/{id}/status', [SbusRegistrationController::class, 'status']);
     Route::get('/sbus/download/{registrationId}', [SbusRegistrationController::class, 'downloadSBUSFiles']);
     
@@ -134,8 +137,12 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
 Route::middleware(['auth:sanctum', 'user'])->group(function () {
     //SKRIPSI
+    Route::get('/rapat/undangan', [RapatController::class, 'undanganRapat']);
+    Route::post('/rapat/{rapatId}/vote-tanggal', [PollingTanggalController::class, 'voteTanggal']);
+    //--{}---//
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    Route::post('/update/profile', [AuthController::class, 'updateProfile']);
 
     Route::post('/kta', [KtaController::class, 'store']);
     Route::get('/kta/showDetail', [KtaController::class, 'checkDetail']);
@@ -150,3 +157,11 @@ Route::middleware(['auth:sanctum', 'notulen'])->group(function () {
 });
 
     Route::post('/poll/respond', [PollingController::class, 'respond']);
+
+
+    Route::get('/tes-email', function () {
+    Mail::raw('Tes kirim email Laravel', function ($message) {
+        $message->to('krysnarachmat1@gmail.com')
+                ->subject('Tes Email dari Laravel');
+    });
+});

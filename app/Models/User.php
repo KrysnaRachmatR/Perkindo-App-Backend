@@ -20,12 +20,8 @@ class User extends Authenticatable
         'logo_perusahaan',
         'nama_penanggung_jawab',
         'no_hp_penanggung_jawab',
-        'ktp_penanggung_jawab',
-        'npwp_penanggung_jawab',
         'nama_pemegang_saham',
         'no_hp_pemegang_saham',
-        'ktp_pemegang_saham',
-        'npwp_pemegang_saham',
         'email',
         'password',
         'is_pengurus',
@@ -38,6 +34,11 @@ class User extends Authenticatable
         'password',
         // 'remember_token',
     ];
+
+    public function getNameAttribute()
+{
+    return $this->nama_direktur ?? $this->nama_perusahaan ?? 'User';
+}
 
     // Relasi ke KTA
     public function kta()

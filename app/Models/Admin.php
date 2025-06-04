@@ -25,8 +25,8 @@ class Admin extends Model implements AuthenticatableContract
         $this->attributes['password'] = Hash::make($password);
     }
 
-     public function meetings()
+     public function admin()
     {
-        return $this->hasMany(Meeting::class);
+        return $this->belongsTo(Admin::class, 'created_by_admin_id');
     }
 }

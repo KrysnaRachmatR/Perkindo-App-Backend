@@ -95,4 +95,14 @@ class UserDetailController extends Controller
             ->groupBy('month')
             ->pluck('total', 'month');
     }
+
+    public function index()
+{
+    $users = User::select('id', 'nama_direktur', 'nama_perusahaan')->get();
+
+    return response()->json([
+        'success' => true,
+        'data' => $users,
+    ]);
+}
 }

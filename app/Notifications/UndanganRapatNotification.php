@@ -29,7 +29,7 @@ class UndanganRapatNotification extends Notification
     {
         $mail = (new MailMessage)
             ->subject('Undangan Rapat')
-            ->greeting('Yth. ' . $notifiable->name)
+            ->greeting('Yth. ' . $notifiable->nama_direktur)
             ->line('Anda diundang untuk menghadiri rapat yang akan diselenggarakan oleh PERKINDO.')
             ->line('Detail Rapat:')
             ->line('📅 Tanggal: ' . $this->rapat->tanggal_terpilih)

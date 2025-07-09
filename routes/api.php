@@ -52,7 +52,10 @@ Route::post('/register', [AuthController::class, 'register'])->name('register');
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     //SKRIPSI
     Route::post('/rapat', [RapatController::class, 'store']);
-    Route::delete('/rapat/undangan/{id}', [RapatController::class, 'destroy']);
+    Route::delete('/rapat/{id}', [RapatController::class, 'destroy']);
+    Route::put('/rapat/{id}', [RapatController::class, 'update']);
+    Route::get('/rapat', [RapatController::class, 'index']);
+    Route::get('/anggota', [UserDetailController::class, 'index']);
 
     // Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
@@ -134,10 +137,16 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::delete('/galeri/{id}', [GaleriController::class, 'destroy']);
 });
 
-
+Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+    return response()->json($request->user());
+});
 Route::middleware(['auth:sanctum', 'user'])->group(function () {
     //SKRIPSI
-    Route::get('/rapat/undangan', [RapatController::class, 'undanganRapat']);
+    Route::post('/rapat/{id}/notulensi', [RapatController::class, 'createNotulen']);
+    Route::get('/anjeng/{id}/notulensi', [RapatController::class, 'getNotulen']);
+    Route::get('/rapat/done', [RapatController::class, 'selesai']);
+
+    Route::get('/rapat/undangan', [RapatController::class, 'undanganMasuk']);
     Route::post('/rapat/{rapatId}/vote-tanggal', [PollingTanggalController::class, 'voteTanggal']);
     //--{}---//
 
@@ -165,3 +174,6 @@ Route::middleware(['auth:sanctum', 'notulen'])->group(function () {
                 ->subject('Tes Email dari Laravel');
     });
 });
+
+
+

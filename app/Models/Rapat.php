@@ -19,6 +19,7 @@ class Rapat extends Model
         'lokasi',
         'urgensi',
         'tanggal_terpilih',
+        'jam',
         'file_undangan_pdf',
         'status',
         'created_by',
@@ -28,6 +29,7 @@ class Rapat extends Model
         'topik',
         'header_image',
         'tanda_tangan_image',
+        'pengiriman_dijadwalkan_pada',
     ];
 
     /**
@@ -52,6 +54,11 @@ class Rapat extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(Admin::class, 'created_by');
+    }
+
+    public function notulensi()
+    {
+        return $this->hasOne(Notulensi::class);
     }
 
     /**

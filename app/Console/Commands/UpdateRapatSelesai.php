@@ -13,17 +13,26 @@ class UpdateRapatSelesai extends Command
 
     public function handle()
     {
-        $today = Carbon::today();
+        $now = Carbon::now();
 
         $rapats = Rapat::where('status', 'finalisasi')
-            ->whereDate('tanggal_final', '<', $today)
-            ->get();
+            ->where(function ($query) use ($now) {
+                $query->where(function ($q) use ($now) {
+                    $q->whereNotNull('jam')
+                        ->whereRaw("STR_TO_DATE(CONCAT(tanggal_terpilih, ' ', jam), '%Y-%m-%d %H:%i') < ?", [$now]);
+                })->orWhere(function ($q) use ($now) {
+                    $q->whereNull('jam')
+                        ->where('tanggal_terpilih', '<', $now->toDateString());
+                });
+            })->get();
 
         foreach ($rapats as $rapat) {
-            $rapat->update(['status' => 'selesai']);
-            $this->info("Rapat #{$rapat->id} diubah ke status selesai.");
+            $rapat->status = 'selesai';
+            $rapat->save();
+            $this->info("Rapat #{$rapat->id} diubah ke selesai.");
         }
 
-        return 0;
+        $this->info("Total: {$rapats->count()} rapat diperbarui.");
     }
+
 }

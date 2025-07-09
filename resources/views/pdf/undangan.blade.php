@@ -174,7 +174,7 @@
             <tr>
                 <td>Jam</td>
                 <td>:</td>
-                <td>13.00 WIB – Selesai</td>
+                <td>{{$rapat->jam}} - Selesai</td>
             </tr>
             <tr>
                 <td>Tempat</td>

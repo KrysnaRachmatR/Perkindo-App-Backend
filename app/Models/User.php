@@ -57,14 +57,4 @@ class User extends Authenticatable
     {
         return $this->hasMany(SbunRegistration::class, 'user_id');
     }
-
-    public function meetings()
-    {
-        return $this->belongsToMany(Meeting::class, 'meeting_users');
-    }
-
-    public function pollResponses()
-    {
-        return $this->hasMany(PollResponse::class);
-    }
 }

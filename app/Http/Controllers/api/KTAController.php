@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Notifications\KTAStatusNotification;
 use App\Http\Controllers\Controller;
 use App\Models\KTA;
 use App\Models\User;
@@ -296,112 +297,123 @@ class KtaController extends Controller
 
     public function approveKTA(Request $request, $id)
     {
-    $validator = Validator::make($request->all(), [
-        'status_diterima' => 'required|in:approve,rejected',
-        'komentar' => 'nullable|string|max:255',
-        'no_kta' => 'required_if:status_diterima,approve|nullable|string|unique:kta,no_kta|max:20',
-    ]);
-
-    if ($validator->fails()) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Validation failed.',
-            'errors' => $validator->errors(),
-        ], 422);
-    }
-
-    $validated = $validator->validated();
-
-    $ktaRegistration = KTA::find($id);
-    if (!$ktaRegistration) {
-        return response()->json([
-            'success' => false,
-            'message' => 'KTA registration not found.',
-        ], 404);
-    }
-
-    if ($validated['status_diterima'] === 'approve') {
-        if ($ktaRegistration->status_diterima === 'approve') {
-            return response()->json([
-                'success' => false,
-                'message' => 'KTA registration has been previously approved.',
-            ], 400);
-        }
-
-        // Ambil durasi dari field yang diisi user
-        $durasi = (int) $ktaRegistration->durasi_tahun;
-        if (!$durasi || $durasi < 1 || $durasi > 3) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Durasi tahun tidak valid. Harus antara 1 hingga 3 tahun.',
-            ], 400);
-        }
-
-        $ktaRegistration->update([
-            'status_diterima' => 'approve',
-            'tanggal_diterima' => now(),
-            'status_aktif' => 'active',
-            'expired_at' => Carbon::now()->addYears($durasi),
-            'can_reapply' => false,
-            'komentar' => null,
-            'rejection_date' => null,
-            'no_kta' => $validated['no_kta'],
+        $validator = Validator::make($request->all(), [
+            'status_diterima' => 'required|in:approve,rejected',
+            'komentar' => 'nullable|string|max:255',
+            'no_kta' => 'required_if:status_diterima,approve|nullable|string|unique:kta,no_kta|max:20',
         ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'KTA registration has been successfully approved.',
-            'data' => $ktaRegistration,
-        ], 200);
-    }
-
-    if ($validated['status_diterima'] === 'rejected') {
-        if ($ktaRegistration->status_diterima === 'approve' && $ktaRegistration->status_aktif === 'active') {
+        if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'KTA registration that has been approved and active cannot be rejected.',
-            ], 400);
+                'message' => 'Validasi gagal.',
+                'errors' => $validator->errors(),
+            ], 422);
         }
 
-        $userId = $ktaRegistration->user_id;
-        $userDirectory = storage_path("app/kta/{$userId}");
+        $validated = $validator->validated();
 
-        if (is_dir($userDirectory)) {
-            $files = glob($userDirectory . '/*');
-            foreach ($files as $file) {
-                if (is_file($file)) {
-                    unlink($file);
-                }
+        $ktaRegistration = KTA::with('user')->find($id); // include relasi user
+        if (!$ktaRegistration) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data KTA tidak ditemukan.',
+            ], 404);
+        }
+
+        if ($validated['status_diterima'] === 'approve') {
+            if ($ktaRegistration->status_diterima === 'approve') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'KTA sudah pernah disetujui.',
+                ], 400);
             }
-            @rmdir($userDirectory);
+
+            $durasi = (int) $ktaRegistration->durasi_tahun;
+
+            if (!$durasi || $durasi < 1 || $durasi > 3) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Durasi tahun tidak valid. Harus antara 1 sampai 3 tahun.',
+                ], 400);
+            }
+
+            $ktaRegistration->update([
+                'status_diterima' => 'approve',
+                'tanggal_diterima' => now(),
+                'status_aktif' => 'active',
+                'expired_at' => now()->addYears($durasi),
+                'can_reapply' => false,
+                'komentar' => null,
+                'rejection_date' => null,
+                'no_kta' => $validated['no_kta'],
+            ]);
+
+            // Kirim notifikasi email approve
+            if ($ktaRegistration->user && $ktaRegistration->user->email) {
+                $ktaRegistration->user->notify(new KTAStatusNotification('approve'));
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'KTA berhasil disetujui.',
+                'data' => $ktaRegistration,
+            ], 200);
         }
 
-        $ktaRegistration->update([
-            'status_diterima' => 'rejected',
-            'status_aktif' => null,
-            'komentar' => $validated['komentar'],
-            'rejection_date' => now(),
-            'can_reapply' => true,
-            'akta_pendirian' => null,
-            'npwp_perusahaan' => null,
-            'nib' => null,
-            'pjbu' => null,
-            'data_pengurus_pemegang_saham' => null,
-            'bukti_transfer' => null,
-            'logo_badan_usaha' => null,
-            'no_kta' => null
-        ]);
+        // Handle rejected
+        if ($validated['status_diterima'] === 'rejected') {
+            if ($ktaRegistration->status_diterima === 'approve' && $ktaRegistration->status_aktif === 'active') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'KTA yang sudah aktif tidak bisa ditolak.',
+                ], 400);
+            }
+
+            // Hapus dokumen dari folder storage/kta/{user_id}
+            $userId = $ktaRegistration->user_id;
+            $userDirectory = storage_path("app/kta/{$userId}");
+            if (is_dir($userDirectory)) {
+                $files = glob($userDirectory . '/*');
+                foreach ($files as $file) {
+                    if (is_file($file)) {
+                        unlink($file);
+                    }
+                }
+                @rmdir($userDirectory);
+            }
+
+            $ktaRegistration->update([
+                'status_diterima' => 'rejected',
+                'status_aktif' => 'expired',
+                'komentar' => $validated['komentar'],
+                'rejection_date' => now(),
+                'can_reapply' => true,
+                'akta_pendirian' => null,
+                'npwp_perusahaan' => null,
+                'nib' => null,
+                'pjbu' => null,
+                'data_pengurus_pemegang_saham' => null,
+                'bukti_transfer' => null,
+                'logo_badan_usaha' => null,
+                'no_kta' => null
+            ]);
+
+            // Kirim notifikasi email rejected
+            if ($ktaRegistration->user && $ktaRegistration->user->email) {
+                $ktaRegistration->user->notify(new KTAStatusNotification('rejected', $validated['komentar']));
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'KTA ditolak. Dokumen telah dihapus.',
+            ], 200);
+        }
 
         return response()->json([
-            'success' => true,
-            'message' => 'KTA registration has been rejected. Documents have been deleted.',
-        ], 200);
-    }
-
-    return response()->json([
-        'success' => false,
-        'message' => 'Invalid status.',
-    ], 400);
+            'success' => false,
+            'message' => 'Status tidak valid.',
+        ], 400);
     }
 
     public function allPending()
@@ -476,7 +488,7 @@ class KtaController extends Controller
         ], 200);
     }
 
-  public function uploadKta(Request $request, $userId)
+    public function uploadKta(Request $request, $userId)
     {
     $user = User::find($userId);
 

@@ -65,7 +65,7 @@ class KTA extends Model
     // Relasi ke model User
     public function user()
     {
-        return $this->belongsTo(User::class)->select('id');
+        return $this->belongsTo(User::class, 'user_id');
     }
     // Relasi ke model Rekening
     public function rekening()

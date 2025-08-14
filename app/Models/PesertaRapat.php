@@ -13,7 +13,7 @@ class PesertaRapat extends Model
 
    protected $fillable = [
         'rapat_id', 
-        'user_id', 
+        'id_user', 
         'is_pengurus',
         'jabatan',
         'hadir',
@@ -21,13 +21,13 @@ class PesertaRapat extends Model
     ];
 
     public function user()
-{
-    return $this->belongsTo(User::class);
-}
+    {
+        return $this->belongsTo(User::class, 'id_user');
+    }
 
-public function rapat()
-{
-    return $this->belongsTo(Rapat::class);
-}
+    public function rapat()
+    {
+        return $this->belongsTo(Rapat::class, 'rapat_id');
+    }
 
 }

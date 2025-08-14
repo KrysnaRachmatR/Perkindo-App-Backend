@@ -56,8 +56,9 @@
         }
 
         .signature img {
-            height: 200px;
-            width: 500px;
+            max-width: 100%;
+            max-height: 150px;
+            height: auto;
         }
 
         .note {
@@ -174,7 +175,7 @@
             <tr>
                 <td>Jam</td>
                 <td>:</td>
-                <td>{{$rapat->jam}} - Selesai</td>
+                <td>{{ \Carbon\Carbon::parse($rapat->jam)->format('H:i') }} - Selesai</td>
             </tr>
             <tr>
                 <td>Tempat</td>
@@ -248,29 +249,39 @@
         </tr>
     </table>
 </div>
-    <h3>Daftar Peserta Rapat</h3>
-    <table class="peserta-table">
-        <thead>
+    @php
+    $prioritasJabatan = [
+        'ketua' => 1,
+        'wakil ketua' => 2,
+        'sekretaris' => 3,
+        'bendahara' => 4,
+    ];
+
+    $pesertaTersortir = collect($rapat->pesertaRapats)->sortBy(function($peserta) use ($prioritasJabatan) {
+        return $prioritasJabatan[$peserta->jabatan] ?? 999;
+    })->values();
+@endphp
+
+<h3>Daftar Peserta Rapat</h3>
+<table class="peserta-table">
+    <thead>
+        <tr>
+            <th>No</th>
+            <th>Nama Peserta</th>
+            <th>Jabatan</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach ($pesertaTersortir as $index => $peserta)
             <tr>
-                <th>No</th>
-                <th>Nama Peserta</th>
-                <th>Jabatan</th>
-                <th>Pengurus</th>
-                <th>Hadir</th>
+                <td>{{ $index + 1 }}</td>
+                <td>{{ optional($peserta->user)->name ?? '-' }}</td>
+                <td>{{ $peserta->jabatan ?? '-' }}</td>
             </tr>
-        </thead>
-        <tbody>
-            @foreach ($rapat->pesertaRapats as $index => $peserta)
-                <tr>
-                    <td>{{ $index + 1 }}</td>
-                    <td>{{ $peserta->user->name }}</td>
-                    <td>{{ $peserta->jabatan ?? '-' }}</td>
-                    <td>{{ $peserta->is_pengurus ? 'Ya' : 'Tidak' }}</td>
-                    <td></td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
+        @endforeach
+    </tbody>
+</table>
+
 
 </body>
 </html>

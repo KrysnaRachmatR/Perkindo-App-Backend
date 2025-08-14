@@ -15,8 +15,8 @@ class Berita extends Model
         'image' => 'string',
     ];
 
-    public function komentars()
-    {
-        return $this->hasMany(Komentar::class);
-    }
+    // public function komentars()
+    // {
+    //     return $this->hasMany(Komentar::class);
+    // }
 }

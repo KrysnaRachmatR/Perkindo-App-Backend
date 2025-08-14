@@ -6,6 +6,7 @@ use App\Models\Galeri;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class GaleriController extends Controller
 {
@@ -23,31 +24,32 @@ class GaleriController extends Controller
     public function store(Request $request)
     {
         try {
-            $request->validate([
+            // Validasi input
+            $validated = $request->validate([
                 'judul' => 'required|string|max:255',
                 'caption' => 'required|string',
                 'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif',
-            ], [
-                'judul.required' => 'Judul harus diisi.',
-                'caption.required' => 'Caption harus diisi.',
-                'gambar.image' => 'File harus berupa gambar.',
-                'gambar.mimes' => 'Format gambar harus jpeg, png, jpg, atau gif.',
-                'gambar.max' => 'Ukuran gambar maksimal 2MB.',
             ]);
 
+            DB::beginTransaction();
+
+            // Simpan data awal tanpa gambar
             $galeri = Galeri::create([
-                'judul' => $request->judul,
-                'caption' => $request->caption,
+                'judul' => $validated['judul'],
+                'caption' => $validated['caption'],
             ]);
 
+            // Jika ada gambar, simpan ke storage
             if ($request->hasFile('gambar')) {
                 $path = $request->file('gambar')->store("galeri/{$galeri->id}", 'public');
                 $galeri->update(['gambar' => $path]);
-            }            
+            }
+
+            DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Data created successfully',
+                'message' => 'Data galeri berhasil disimpan.',
                 'data' => [
                     'id' => $galeri->id,
                     'judul' => $galeri->judul,
@@ -56,11 +58,18 @@ class GaleriController extends Controller
                     'created_at' => $galeri->created_at,
                 ]
             ], 201);
-        } catch (\Exception $e) {
+        } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create data',
-                'error' => $e->getMessage()
+                'message' => 'Validasi gagal.',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menyimpan data.',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

@@ -26,6 +26,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('kta:update-status')->daily();
         $schedule->command('sbun:update-status')->daily();
         $schedule->command('sbus:update-status')->daily();
-        $schedule->command('rapat:update-selesai')->everyMinute();
+        $schedule->command('rapat:check-kehadiran')->everyFiveMinutes();
+        $schedule->command('rapat:selesai')->everyFiveMinutes();
     }
 }

@@ -7,20 +7,40 @@ use Illuminate\Database\Eloquent\Model;
 
 class Notulensi extends Model
 {
+    use HasFactory;
+
+    protected $table = 'notulensis';
+
     protected $fillable = [
-        'rapat_id',
-        'user_id',
-        'isi'
+        'id_rapat',
+        'dibuat_oleh',
+        'dibuat_oleh_admin',
+        'isi',
+        'status',
+        'file_pdf_path',
+        'approved_at',
+        'catatan_penolakan',
     ];
 
+    protected $casts = [
+        'approved_at' => 'datetime',
+    ];
+
+    // Relasi ke rapat
     public function rapat()
     {
-        return $this->belongsTo(Rapat::class);
+        return $this->belongsTo(Rapat::class, 'id_rapat');
     }
 
-    public function user()
+    // Relasi ke user (pembuat)
+    public function pembuat()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'dibuat_oleh');
+    }
+
+    public function pembuatAdmin()
+    {
+        return $this->belongsTo(Admin::class, 'dibuat_oleh_admin');
     }
 
     public function files()

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\Controller;
 use App\Models\ProfileContent;
 use Illuminate\Http\Request;
@@ -9,21 +10,26 @@ use Illuminate\Http\Request;
 class ProfileController extends Controller
 {
 
-  public function getProfile()
+ public function getProfile()
   {
-    $profileContent = ProfileContent::first();
-    if (!$profileContent) {
+      $profileContent = ProfileContent::first();
+
+      if (!$profileContent) {
+          return response()->json([
+              'success' => false,
+              'message' => 'Profile content not found.',
+          ], 404);
+      }
+
+      // Ubah path gambar jadi URL lengkap agar bisa dipakai di frontend
+      $profileContent->header_image = $profileContent->header_image
+        ? asset(Storage::url($profileContent->header_image))
+        : null;
+
       return response()->json([
-        'success' => false,
-        'message' => 'Profile content not found.',
-      ], 404);
-    }
-
-    return response()->json([
-      'success' => true,
-
-      'data' => $profileContent,
-    ]);
+          'success' => true,
+          'data' => $profileContent,
+      ]);
   }
 
   public function store(Request $request)

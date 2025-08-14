@@ -6,7 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
-class UpdateSBUStatus extends Command
+class UpdateSBUSStatus extends Command
 {
     protected $signature = 'sbus:update-status';
     protected $description = 'Update status_aktif menjadi will_expired atau expired berdasarkan tanggal expired_at';

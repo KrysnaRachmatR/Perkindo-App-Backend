@@ -46,6 +46,7 @@ class SbusRegistrationController extends Controller
         'npwp_pengurus' => 'required|file|mimes:jpg,png,pdf',
         'PJTBU' => 'required|file|mimes:jpg,png,pdf',
         'PJKSBU' => 'required|file|mimes:jpg,png,pdf',
+        'kop_perusahaan' => 'required|file|mimes:jpg,png,pdf',
         'foto_pas_direktur' => 'required|file|mimes:jpg,png,pdf',
         'surat_pernyataan_penanggung_jawab_mutlak' => 'required|file|mimes:jpg,png,pdf',
         'surat_pernyataan_SMAP' => 'required|file|mimes:jpg,png,pdf',
@@ -82,7 +83,7 @@ class SbusRegistrationController extends Controller
     $fields = [
         'akta_asosiasi_aktif_masa_berlaku', 'akta_perusahaan_pendirian', 'akta_perubahan',
         'pengesahan_menkumham', 'npwp_perusahaan', 'nib_berbasis_resiko', 'ktp_pengurus',
-        'npwp_pengurus', 'PJTBU', 'PJKSBU', 'foto_pas_direktur', 'surat_pernyataan_penanggung_jawab_mutlak',
+        'npwp_pengurus', 'PJTBU', 'PJKSBU', 'kop_perusahaan','foto_pas_direktur', 'surat_pernyataan_penanggung_jawab_mutlak',
         'surat_pernyataan_SMAP', 'lampiran_TKK', 'neraca_keuangan_2_tahun_terakhir',
         'akun_OSS', 'bukti_transfer'
     ];
@@ -102,10 +103,9 @@ class SbusRegistrationController extends Controller
         'konstruksi_sub_klasifikasi_id' => $subKlasifikasiId,
         'rekening_id' => $request->rekening_id,
         'email_perusahaan' => $user->email,
-        'kop_perusahaan' => $user->logo_perusahaan ?? null,
         'no_hp_direktur' => $user->no_hp_penanggung_jawab ?? $user->nomor_penanggung_jawab,
         'status_diterima' => 'pending',
-        'status_aktif' => null,
+        'status_aktif' => 'expired',
         'status_perpanjangan_sbus' => 'pending',
         'can_reapply' => 1,
     ]);
@@ -307,6 +307,41 @@ class SbusRegistrationController extends Controller
             'status_aktif' => $item->status_aktif,
             'tanggal_diterima' => optional($item->tanggal_diterima)->format('Y-m-d'),
             'expired_at' => optional($item->tanggal_diterima)->copy()->addYears(3)->format('Y-m-d'),
+            'komentar' => $item->komentar,
+            'created_at' => $item->created_at->format('Y-m-d H:i'),
+        ];
+    });
+
+    return response()->json([
+        'success' => true,
+        'data' => $formatted,
+    ]);
+  }
+  
+  public function expired()
+  {
+    $registrations = SBUSRegistrations::with(['user', 'konstruksiKlasifikasi', 'konstruksiSubKlasifikasi', 'rekening'])
+        ->where('status_aktif', ['expired']) // ✅ Filter hanya active & will_expired
+        ->latest()
+        ->get();
+
+    $formatted = $registrations->map(function ($item) {
+        return [
+            'id' => $item->id,
+            'user_id' => $item->user_id,
+            'nama_perusahaan' => $item->user->nama_perusahaan ?? null,
+            'nama_direktur' => $item->user->nama_direktur ?? null,
+            'alamat_perusahaan' => $item->user->alamat_perusahaan ?? null,
+            'email' => $item->user->email ?? null,
+            'nomor_hp_penanggung_jawab' => $item->nomor_hp_penanggung_jawab,
+            'nama_klasifikasi' => $item->konstruksiKlasifikasi->nama ?? null,
+            'nama_sub_klasifikasi' => $item->konstruksiSubKlasifikasi->nama ?? null,
+            'sbu_code' => $item->konstruksiSubKlasifikasi->sbu_code ?? null,
+            'nama_rekening' => $item->rekening->nama_bank ?? null,
+            'bukti_transfer' => $item->bukti_transfer,
+            'status_diterima' => $item->status_diterima,
+            'status_aktif' => $item->status_aktif,
+            'tanggal_diterima' => optional($item->tanggal_diterima)->format('Y-m-d'),
             'komentar' => $item->komentar,
             'created_at' => $item->created_at->format('Y-m-d H:i'),
         ];

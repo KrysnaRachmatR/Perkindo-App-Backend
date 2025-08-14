@@ -144,7 +144,27 @@ class AuthController extends Controller
             'user' => $user,
         ]);
     }
-   
+
+    public function updateEmail(Request $request)
+    {
+        $user = auth()->user(); // Ambil user yang sedang login
+
+        $request->validate([
+            'email' => 'required|email|unique:users,email,' . $user->id,
+        ], [
+            'email.unique' => 'Email sudah digunakan oleh pengguna lain.',
+        ]);
+
+        $user->update([
+            'email' => $request->email,
+        ]);
+
+        return response()->json([
+            'message' => 'Email berhasil diperbarui.',
+            'user' => $user,
+        ]);
+    }
+    
     public function login(Request $request)
     {
         $credentials = $request->validate([

@@ -19,8 +19,9 @@ use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\SbunRegistrationController;
 use App\Http\Controllers\Api\UserDetailController;
 use App\Http\Controllers\Api\RapatController;
+use App\Http\Controllers\Api\KetuaApprovalController;
 
-Route::get('/rapat', [RapatController::class, 'index']);
+Route::get('/testrapat/{rapatId}', [RapatController::class, 'hitungKuorumKehadiran']);
 
 //Konten GET untuk Public
 Route::get('/agenda', [AgendaController::class, 'index']);
@@ -51,12 +52,14 @@ Route::post('/register', [AuthController::class, 'register'])->name('register');
 // Middleware untuk Admin Only
 Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     //SKRIPSI
-    Route::post('/rapat', [RapatController::class, 'store']);
-    Route::delete('/rapat/{id}', [RapatController::class, 'destroy']);
-    Route::put('/rapat/{id}', [RapatController::class, 'update']);
-    Route::get('/rapat', [RapatController::class, 'index']);
-    Route::get('/anggota', [UserDetailController::class, 'index']);
-
+    Route::post('/admin/rapat/{rapatId}/create-notulensi', [RapatController::class, 'createNotulenByAdmin']); //Admin Membuat Notulensi
+    Route::post('/admin/rapat', [RapatController::class, 'store']);
+    Route::delete('/admin/rapat/{id}', [RapatController::class, 'destroy']);
+    Route::put('/admin/rapat/{id}', [RapatController::class, 'update']);
+    Route::get('/admin/anggota', [UserDetailController::class, 'index']);
+    Route::post('/admin/rapat/{rapatId}/optiontanggal', [RapatController::class, 'storeOptions']);
+    Route::get('/admin/rapat/pol', [RapatController::class, 'getRapatMenungguPolling']);
+    Route::get('/admin/rapat/pol-polan', [RapatController::class, 'getRapatMenungguPollingTanggal']);
     // Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     
@@ -142,16 +145,27 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 Route::middleware(['auth:sanctum', 'user'])->group(function () {
     //SKRIPSI
-    Route::post('/rapat/{id}/notulensi', [RapatController::class, 'createNotulen']);
-    Route::get('/anjeng/{id}/notulensi', [RapatController::class, 'getNotulen']);
-    Route::get('/rapat/done', [RapatController::class, 'selesai']);
+    Route::post('/user/rapat/{rapatId}/notulensi', [RapatController::class, 'createNotulen']); //Ketua Sekretaris Membuat Notulensi
+    // Route::post('/user/rapat/{notulensiId}/notulensi', [RapatController::class, 'updateNotulenByKetua']); // Ketua Sekretaris Update Notulensi
+    Route::post('/jembot/rapat/{notulensiId}/notulensi', [RapatController::class, 'updateNotulenByKetua']);
+    Route::get('/user/rapat/{rapatId}/notulensi', [RapatController::class, 'getNotulen']); //Anggota yang Diundang saja yang mendapat notulensi
+    Route::get('/user/rapat/notulensi', [RapatController::class, 'getAllNotulensi']); //Anggota yang Diundang saja yang mendapat notulensi
+    Route::get('/user/rapat/undangan', [RapatController::class, 'undanganMasuk']); //Tampil Semua Undangan Masuk
+    Route::post('/user/rapat/{rapatId}/ketua/decision', [KetuaApprovalController::class, 'decide']);
+    Route::get('/user/rapats/ketua/pending-approvals', [KetuaApprovalController::class, 'getPendingApprovals']);
+    Route::post('/user/rapat/{rapatId}/konfirmasi-kehadiran', [RapatController::class, 'konfirmasiKehadiran']);
+    Route::post('/user/rapat/{rapatId}/polling-tanggal', [RapatController::class, 'pollingTanggal']);
+    Route::get('/user/rapat/{rapatId}/polling-summary', [RapatController::class, 'getPollingSummary']);
+    Route::post('/user/rapat/{rapatId}/absen', [RapatController::class, 'absen']);
+    Route::put('/user/rapat/{id}/decision', [RapatController::class, 'verifikasiNotulensi']);
+    Route::get('/user/rapat/done', [RapatController::class, 'rapatDone']); //Tampil Semua Rapat Selesai
+    Route::get('/user/rapat/user-done', [RapatController::class, 'getFinalisasi']);
 
-    Route::get('/rapat/undangan', [RapatController::class, 'undanganMasuk']);
-    Route::post('/rapat/{rapatId}/vote-tanggal', [PollingTanggalController::class, 'voteTanggal']);
     //--{}---//
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::post('/update/profile', [AuthController::class, 'updateProfile']);
+    Route::post('/update/email', [AuthController::class, 'updateEmail']);
 
     Route::post('/kta', [KtaController::class, 'store']);
     Route::get('/kta/showDetail', [KtaController::class, 'checkDetail']);
@@ -161,19 +175,9 @@ Route::middleware(['auth:sanctum', 'user'])->group(function () {
     Route::post('/sbun', [SbunRegistrationController::class, 'store']);
 });
 
-Route::middleware(['auth:sanctum', 'notulen'])->group(function () {
-    Route::post('/notes', [MeetingNoteController::class, 'store']);
-});
-
-    Route::post('/poll/respond', [PollingController::class, 'respond']);
 
 
-    Route::get('/tes-email', function () {
-    Mail::raw('Tes kirim email Laravel', function ($message) {
-        $message->to('krysnarachmat1@gmail.com')
-                ->subject('Tes Email dari Laravel');
-    });
-});
-
-
-
+    Route::get('/user/rapat/{rapatId}/polling-options', [RapatController::class, 'getPollingOptions']);
+    Route::get('/admin/rapat', [RapatController::class, 'index']);
+ 
+    Route::get('/user/notulensi/{rapatId}/download', [RapatController::class, 'downloadNotulensiZip']);

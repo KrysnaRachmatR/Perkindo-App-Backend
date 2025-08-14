@@ -397,4 +397,53 @@ class SbunRegistrationController extends Controller
             ]);
         }
     }
+
+    public function expired(Request $request)
+    {
+        try {
+            $query = DB::table('sbun_registration as sbun')
+                ->select(
+                    'sbun.user_id',
+                    'sbun.id',
+                    'users.nama_perusahaan',
+                    'users.nama_direktur',
+                    'users.alamat_perusahaan',
+                    'users.email',
+                    'sbun.nomor_hp_penanggung_jawab',
+                    'klasifikasi.nama as nama_klasifikasi',
+                    'sub_klasifikasi.nama as nama_sub_klasifikasi',
+                    'sub_klasifikasi.sbu_code',
+                    'rekening.nama_bank as nama_rekening',
+                    'rekening.nomor_rekening as nomor_rekening',
+                    'sbun.bukti_transfer',
+                    'sbun.status_diterima',
+                    'sbun.status_aktif',
+                    'sbun.tanggal_diterima',
+                    'sbun.expired_at',
+                    'sbun.komentar'
+                )
+                ->join('users', 'sbun.user_id', '=', 'users.id')
+                ->leftJoin('non_konstruksi_klasifikasis as klasifikasi', 'sbun.non_konstruksi_klasifikasi_id', '=', 'klasifikasi.id')
+                ->leftJoin('non_konstruksi_sub_klasifikasis as sub_klasifikasi', 'sbun.non_konstruksi_sub_klasifikasi_id', '=', 'sub_klasifikasi.id')
+                ->leftJoin('rekening_tujuan as rekening', 'sbun.rekening_id', '=', 'rekening.id')
+                ->whereIn('sbun.status_aktif', ['expired'])
+
+                ->whereDate('sbun.expired_at', '>', now()) // hanya yang belum expired
+                ->orderBy('sbun.created_at', 'desc');
+
+            $registrations = $query->get();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Daftar pendaftaran SBUN yang aktif berhasil diambil',
+                'data' => $registrations,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat mengambil data',
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
 }?>

@@ -1,5 +1,5 @@
 @component('mail::message')
-# Hai {{ optional($rapat->pesertaRapats->first())->user->name ?? 'Peserta' }}
+Hai ,
 
 Anda menerima undangan rapat:
 
@@ -7,7 +7,7 @@ Anda menerima undangan rapat:
 **Tanggal:** {{ \Carbon\Carbon::parse($rapat->tanggal_terpilih)->translatedFormat('l, d F Y') }}  
 **Lokasi:** {{ $rapat->lokasi ?? '-' }}
 
-Agenda:  
+**Agenda:**  
 {{ $rapat->agenda ?? '-' }}
 
 Silakan lihat file undangan resmi dalam bentuk PDF yang dilampirkan di email ini.

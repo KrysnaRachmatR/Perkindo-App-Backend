@@ -10,10 +10,10 @@ class BeritaController extends Controller
 {
   // Menampilkan semua berita
   public function index()
-  {
-    $beritas = Berita::with('komentars')->get();
-    return response()->json($beritas);
-  }
+{
+    $beritas = Berita::all(); // ambil semua data
+    return response()->json($beritas); // kembalikan sebagai JSON
+}
 
   // Menambahkan berita baru
   public function store(Request $request)
@@ -27,8 +27,7 @@ class BeritaController extends Controller
               'title.required' => 'Title harus diisi.',
               'caption.required' => 'Caption harus diisi.',
               'image.image' => 'File harus berupa image.',
-              'image.mimes' => 'Format image harus jpeg, png, jpg, atau gif.',
-              'image.max' => 'Ukuran image maksimal 2MB.',
+              'image.mimes' => 'Format image harus jpeg, png, jpg, atau gif.'
           ]);
   
           // Simpan berita tanpa image terlebih dahulu

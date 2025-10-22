@@ -300,7 +300,7 @@ class KtaController extends Controller
         $validator = Validator::make($request->all(), [
             'status_diterima' => 'required|in:approve,rejected',
             'komentar' => 'nullable|string|max:255',
-            'no_kta' => 'required_if:status_diterima,approve|nullable|string|unique:kta,no_kta|max:20',
+            'no_kta' => 'required_if:status_diterima,approve|nullable|string|unique:kta,no_kta|max:40',
         ]);
 
         if ($validator->fails()) {

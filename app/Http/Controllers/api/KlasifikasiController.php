@@ -68,17 +68,28 @@ class KlasifikasiController extends Controller
   // Menambahkan klasifikasi baru
   public function store(Request $request)
   {
-    $validated = $request->validate([
-      'nama' => 'required|string|max:255',
-    ]);
+      $validated = $request->validate([
+          'jenis' => 'required|in:konstruksi,non_konstruksi',
+          'nama' => 'required|string|max:255',
+          'deskripsi' => 'nullable|string',
+      ]);
 
-    $klasifikasi = Klasifikasi::create($validated);
+      try {
+          $klasifikasi = Klasifikasi::create($validated);
 
-    return response()->json([
-      'success' => true,
-      'message' => 'Klasifikasi berhasil ditambahkan',
-      'data' => $klasifikasi,
-    ], 201);
+          return response()->json([
+              'success' => true,
+              'message' => 'Klasifikasi berhasil ditambahkan',
+              'data' => $klasifikasi,
+          ], 201);
+
+      } catch (\Exception $e) {
+          return response()->json([
+              'success' => false,
+              'message' => 'Terjadi kesalahan saat menyimpan klasifikasi',
+              'error'   => $e->getMessage(),
+          ], 500);
+      }
   }
 
   // Menampilkan detail klasifikasi berdasarkan ID

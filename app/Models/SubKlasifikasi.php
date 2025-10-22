@@ -9,11 +9,24 @@ class SubKlasifikasi extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['nama', 'sbu_code', 'klasifikasi_id'];
+    protected $table = 'sub_klasifikasi';
 
-    // Relasi ke Klasifikasi
+    protected $fillable = [
+        'klasifikasi_id',
+        'kode',
+        'nama',
+        'deskripsi',
+    ];
+
+    // Relasi: SubKlasifikasi milik 1 Klasifikasi
     public function klasifikasi()
     {
-        return $this->belongsTo(Klasifikasi::class);
+        return $this->belongsTo(Klasifikasi::class, 'klasifikasi_id');
+    }
+
+    // Relasi: SubKlasifikasi punya banyak SBU
+    public function sbus()
+    {
+        return $this->hasMany(Sbu::class, 'sub_klasifikasi_id');
     }
 }

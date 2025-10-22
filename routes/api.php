@@ -7,8 +7,6 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\KlasifikasiController;
 use App\Http\Controllers\Api\KtaController;
 use App\Http\Controllers\Api\SubKlasifikasiController;
-use App\Http\Controllers\Api\NonKonstruksiKlasifikasiController;
-use App\Http\Controllers\Api\NonKonstruksiSubKlasifikasiController;
 use App\Http\Controllers\Api\AgendaController;
 use App\Http\Controllers\Api\BeritaController;
 use App\Http\Controllers\Api\GaleriController;
@@ -25,11 +23,9 @@ Route::get('/testrapat/{rapatId}', [RapatController::class, 'hitungKuorumKehadir
 
 //Konten GET untuk Public
 Route::get('/agenda', [AgendaController::class, 'index']);
-Route::get('/agenda/{id}', [AgendaController::class, 'show']);
 Route::get('/berita', [BeritaController::class, 'index']);
-Route::get('/berita/{id}', [BeritaController::class, 'show']);
 Route::get('/galeri', [GaleriController::class, 'index']);
-Route::get('/profile', [ProfileController::class, 'getProfile']);
+Route::get('/jembot123', [ProfileController::class, 'getProfile']);
 Route::get('/berita/{berita_id}/komentar', [KomentarController::class, 'index']);
 Route::post('/berita/{berita_id}/komentar', [KomentarController::class, 'store']);
 
@@ -37,11 +33,7 @@ Route::post('/berita/{berita_id}/komentar', [KomentarController::class, 'store']
 Route::get('/kota-kabupaten', [KotaKabupatenController::class, 'index']);
 Route::get('/rek', [RekeningController::class, 'index']);
 Route::get('/klasifikasi', [KlasifikasiController::class, 'index']);
-Route::get('/klasifikasi/{id}', [KlasifikasiController::class, 'show']);
 Route::get('/detail/klasifikasi', [KlasifikasiController::class, 'detail']);
-Route::get('/non-konstruksi/klasifikasis', [NonKonstruksiKlasifikasiController::class, 'index']);
-Route::get('/non-konstruksi/klasifikasis/{id}', [NonKonstruksiKlasifikasiController::class, 'show']);
-Route::get('/non-konstruksi/{klasifikasiId}/sub-klasifikasis', [NonKonstruksiSubKlasifikasiController::class, 'index']);
 Route::get('/detail-non', [UserDetailController::class, 'indexNonKonstruksi']);
 Route::get('/detail', [UserDetailController::class, 'indexKonstruksi']);
 
@@ -87,14 +79,12 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/sbus/download/{registrationId}', [SbusRegistrationController::class, 'downloadSBUSFiles']);
     
     //Rekening Tujuan Routes
-    Route::get('/rek/{id}', [RekeningController::class, 'show']);
     Route::post('/rek', [RekeningController::class, 'store']);
     Route::put('/rek/{id}', [RekeningController::class, 'update']);
     Route::delete('/rek/{id}', [RekeningController::class, 'destroy']);
 
     // Kota Kabupaten
     Route::post('kota-kabupaten', [KotaKabupatenController::class, 'store']);
-    Route::get('kota-kabupaten/{id}', [KotaKabupatenController::class, 'show']);
     Route::put('kota-kabupaten/{id}', [KotaKabupatenController::class, 'update']);
     Route::delete('kota-kabupaten/{id}', [KotaKabupatenController::class, 'destroy']);
 
@@ -108,16 +98,6 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::put('/klasifikasi/{id}', [KlasifikasiController::class, 'update']); // Update klasifikasi
     Route::delete('/klasifikasi/{id}', [KlasifikasiController::class, 'destroy']); // Hapus klasifikasi
 
-    // Klasifikasi Non Konstruksi Routes    
-    Route::post('non-konstruksi/klasifikasis', [NonKonstruksiKlasifikasiController::class, 'store']);
-    Route::put('non-konstruksi/klasifikasis/{id}', [NonKonstruksiKlasifikasiController::class, 'update']);
-    Route::delete('non-konstruksi/klasifikasis/{id}', [NonKonstruksiKlasifikasiController::class, 'destroy']);
-
-    // Sub Klasifikasi Non Konstruksi Routes
-    Route::post('non-konstruksi/klasifikasis/{klasifikasiId}/sub-klasifikasis', [NonKonstruksiSubKlasifikasiController::class, 'store']);
-    Route::put('non-konstruksi/klasifikasis/{klasifikasiId}/sub-klasifikasis/{subKlasifikasiId}', [NonKonstruksiSubKlasifikasiController::class, 'update']);
-    Route::delete('non-konstruksi/klasifikasis/{klasifikasiId}/sub-klasifikasis/{subKlasifikasiId}', [NonKonstruksiSubKlasifikasiController::class, 'destroy']);
-
     //Content Route//
 
     // Route Agenda
@@ -128,15 +108,16 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     // Route Berita
     Route::post('/berita', [BeritaController::class, 'store']);
     Route::delete('/berita/{id}', [BeritaController::class, 'destroy']);
+    Route::post('/berita/{id}', [BeritaController::class, 'update']);
 
     // Route Profile
     Route::post('/profile', [ProfileController::class, 'store']);
-    Route::put('/profile/{id}', [ProfileController::class, 'update']);
+    Route::post('/profile/{id}', [ProfileController::class, 'update']);
     Route::delete('/profile/{id}', [ProfileController::class, 'destroy']);
 
     //Route Galeri
     Route::post('/galeri', [GaleriController::class, 'store']);
-    Route::put('/galeri/{id}', [GaleriController::class, 'update']);
+    Route::post('/galeri/{id}', [GaleriController::class, 'update']);
     Route::delete('/galeri/{id}', [GaleriController::class, 'destroy']);
 });
 

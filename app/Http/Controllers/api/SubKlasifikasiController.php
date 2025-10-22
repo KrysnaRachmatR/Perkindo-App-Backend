@@ -32,29 +32,39 @@ class SubKlasifikasiController extends Controller
   // Menambahkan sub klasifikasi baru ke dalam klasifikasi tertentu
   public function store(Request $request, $klasifikasiId)
   {
-    $klasifikasi = Klasifikasi::find($klasifikasiId);
+      $klasifikasi = Klasifikasi::find($klasifikasiId);
 
-    if (!$klasifikasi) {
-      return response()->json([
-        'success' => false,
-        'message' => 'Klasifikasi tidak ditemukan',
-      ], 404);
-    }
+      if (!$klasifikasi) {
+          return response()->json([
+              'success' => false,
+              'message' => 'Klasifikasi tidak ditemukan',
+          ], 404);
+      }
 
-    $validated = $request->validate([
-      'nama' => 'required|string|max:255',
-      'sbu_code' => 'required|string|max:10',
-    ]);
+      $validated = $request->validate([
+          'kode' => 'required|string|max:20',   // disesuaikan dengan field di DB
+          'nama' => 'required|string|max:255',
+          'deskripsi' => 'nullable|string',
+      ]);
 
-    $subKlasifikasi = $klasifikasi->subKlasifikasis()->create($validated);
+      try {
+          $subKlasifikasi = $klasifikasi->subKlasifikasis()->create($validated);
 
-    return response()->json([
-      'success' => true,
-      'message' => 'Sub Klasifikasi berhasil ditambahkan',
-      'data' => $subKlasifikasi,
-    ], 201);
+          return response()->json([
+              'success' => true,
+              'message' => 'Sub Klasifikasi berhasil ditambahkan',
+              'data' => $subKlasifikasi,
+          ], 201);
+
+      } catch (\Exception $e) {
+          return response()->json([
+              'success' => false,
+              'message' => 'Terjadi kesalahan saat menyimpan sub klasifikasi',
+              'error'   => $e->getMessage(),
+          ], 500);
+      }
   }
-
+  
   // Menampilkan detail sub klasifikasi dari klasifikasi tertentu
   public function show($klasifikasiId, $subKlasifikasiId)
   {

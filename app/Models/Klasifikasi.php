@@ -9,15 +9,24 @@ class Klasifikasi extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['nama'];
+    protected $table = 'klasifikasi';
 
+    protected $fillable = [
+        'jenis',
+        'kode',
+        'nama',
+        'deskripsi',
+    ];
+
+    // Relasi: Klasifikasi punya banyak SubKlasifikasi
     public function subKlasifikasis()
     {
-        return $this->hasMany(SubKlasifikasi::class);
+        return $this->hasMany(SubKlasifikasi::class, 'klasifikasi_id');
     }
 
-    public function sbusRegistrations()
+    // Relasi: Klasifikasi punya banyak SBU
+    public function sbus()
     {
-        return $this->hasMany(SbusRegistrations::class);
+        return $this->hasMany(Sbu::class, 'klasifikasi_id');
     }
 }

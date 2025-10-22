@@ -53,24 +53,25 @@ class SBUSRegistrations extends Model
         'updated_at' => 'datetime',
     ];
 
-    // Relasi dengan model User
+    // Relasi dengan User
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id');
     }
 
-    // Relasi dengan model KonstruksiKlasifikasi
+    // Relasi dengan Klasifikasi
     public function konstruksiKlasifikasi()
     {
         return $this->belongsTo(Klasifikasi::class, 'konstruksi_klasifikasi_id');
     }
 
+    // Relasi dengan SubKlasifikasi
     public function konstruksiSubKlasifikasi()
     {
         return $this->belongsTo(SubKlasifikasi::class, 'konstruksi_sub_klasifikasi_id');
     }
 
-    // Relasi dengan model RekeningTujuan
+    // Relasi dengan RekeningTujuan
     public function rekening()
     {
         return $this->belongsTo(RekeningTujuan::class, 'rekening_id');

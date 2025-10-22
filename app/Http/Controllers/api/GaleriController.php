@@ -76,55 +76,81 @@ class GaleriController extends Controller
 
     // Update galeri
     public function update(Request $request, $id)
-    {
-        try {
-            $request->validate([
-                'judul' => 'sometimes|string|max:255',
-                'caption' => 'sometimes|string',
-                'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            ]);
+{
+    try {
+        // Validasi input
+        $validated = $request->validate([
+            'judul'   => 'sometimes|string|max:255',
+            'caption' => 'sometimes|string',
+            'gambar'  => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ], [
+            'judul.string'   => 'Judul harus berupa teks.',
+            'judul.max'      => 'Judul maksimal 255 karakter.',
+            'caption.string' => 'Caption harus berupa teks.',
+            'gambar.image'   => 'File harus berupa gambar.',
+            'gambar.mimes'   => 'Format gambar harus jpeg, png, jpg, atau gif.',
+            'gambar.max'     => 'Ukuran gambar maksimal 2MB.',
+        ]);
 
-            $galeri = Galeri::findOrFail($id);
+        // Cari data galeri
+        $galeri = Galeri::find($id);
 
-            if ($request->has('judul')) {
-                $galeri->judul = $request->judul;
-            }
-            if ($request->has('caption')) {
-                $galeri->caption = $request->caption;
-            }
-
-            if ($request->hasFile('gambar')) {
-                // Hapus gambar lama jika ada
-                if ($galeri->gambar && Storage::disk('public')->exists($galeri->gambar)) {
-                    Storage::disk('public')->delete($galeri->gambar);
-                }
-
-                // Simpan gambar baru
-                $path = $request->file('gambar')->store("galeri/{$galeri->id}", 'public');
-                $galeri->gambar = $path;
-            }
-
-            $galeri->save();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Data updated successfully',
-                'data' => [
-                    'id' => $galeri->id,
-                    'judul' => $galeri->judul,
-                    'caption' => $galeri->caption,
-                    'gambar' => $galeri->gambar ? asset('storage/' . $galeri->gambar) : null,
-                    'updated_at' => $galeri->updated_at,
-                ]
-            ], 200);
-        } catch (\Exception $e) {
+        if (!$galeri) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update data',
-                'error' => $e->getMessage()
-            ], 500);
+                'message' => 'Data galeri tidak ditemukan',
+            ], 404);
         }
+
+        // Update data jika ada input
+        if ($request->filled('judul')) {
+            $galeri->judul = $validated['judul'];
+        }
+        if ($request->filled('caption')) {
+            $galeri->caption = $validated['caption'];
+        }
+
+        // Update gambar
+        if ($request->hasFile('gambar')) {
+            // Hapus gambar lama kalau ada
+            if ($galeri->gambar && Storage::disk('public')->exists($galeri->gambar)) {
+                Storage::disk('public')->delete($galeri->gambar);
+            }
+
+            // Simpan gambar baru
+            $path = $request->file('gambar')->store("galeri/{$galeri->id}", 'public');
+            $galeri->gambar = $path;
+        }
+
+        $galeri->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Data berhasil diperbarui',
+            'data' => [
+                'id'         => $galeri->id,
+                'judul'      => $galeri->judul,
+                'caption'    => $galeri->caption,
+                'gambar'     => $galeri->gambar ? asset('storage/' . $galeri->gambar) : null,
+                'updated_at' => $galeri->updated_at,
+            ]
+        ], 200);
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Validation error',
+            'errors'  => $e->errors(),
+        ], 422);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Terjadi kesalahan saat update data',
+            'error'   => $e->getMessage(),
+        ], 500);
     }
+}
+
 
     // Delete galeri
     public function destroy($id)

@@ -8,88 +8,130 @@ use Illuminate\Http\Request;
 
 class AgendaController extends Controller
 {
-  // Menampilkan semua agenda
-  public function index()
-  {
-    $agendas = Agenda::all();
-    return response()->json($agendas);
-  }
+    public function index()
+    {
+        try {
+            $agendas = Agenda::orderBy('date', 'asc')->get();
 
-  // Menambahkan agenda baru
-  public function store(Request $request)
-  {
-    $request->validate([
-      'date' => 'required|date',
-      'title' => 'required|string|max:255',
-      'caption' => 'required|string',
-    ]);
+            return response()->json([
+                'status'  => true,
+                'message' => 'Daftar agenda berhasil diambil.',
+                'data'    => $agendas
+            ], 200);
 
-    $agenda = Agenda::create([
-      'date' => $request->date,
-      'title' => $request->title,
-      'caption' => $request->caption,
-    ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Gagal mengambil daftar agenda.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    public function store(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'date'    => 'required|date',
+                'title'   => 'required|string|max:255',
+                'caption' => 'required|string',
+            ]);
 
-    return response()->json(['message' => 'Agenda created successfully', 'agenda' => $agenda], 201);
-  }
+            $agenda = Agenda::create($validated);
 
-  // Menampilkan agenda berdasarkan ID
-  public function show($id)
-  {
-    $agenda = Agenda::find($id);
+            return response()->json([
+                'status'  => true,
+                'message' => 'Agenda berhasil dibuat.',
+                'data'    => $agenda
+            ], 201);
 
-    if (!$agenda) {
-      return response()->json(['message' => 'Agenda not found'], 404);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+
+            return response()->json([
+                'status'  => false,
+                'message' => 'Validation error.',
+                'errors'  => $e->errors()
+            ], 422);
+
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status'  => false,
+                'message' => 'Gagal membuat agenda.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
     }
 
-    return response()->json($agenda);
-  }
+    public function update(Request $request, $id)
+    {
+        try {
+            $agenda = Agenda::findOrFail($id);
 
-  // Memperbarui agenda
-  public function update(Request $request, $id)
-  {
-    $agenda = Agenda::find($id);
+            $validated = $request->validate([
+                'date'    => 'sometimes|date',
+                'title'   => 'sometimes|string|max:255',
+                'caption' => 'sometimes|string',
+            ]);
 
-    if (!$agenda) {
-      return response()->json([
-        'success' => false,
-        'message' => 'Agenda not found'
-      ], 404);
+            $agenda->update($validated);
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Agenda berhasil diperbarui.',
+                'data'    => $agenda
+            ], 200);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+
+            return response()->json([
+                'status'  => false,
+                'message' => 'Validation error.',
+                'errors'  => $e->errors()
+            ], 422);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+
+            return response()->json([
+                'status'  => false,
+                'message' => 'Agenda tidak ditemukan.'
+            ], 404);
+
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status'  => false,
+                'message' => 'Gagal memperbarui agenda.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
     }
 
-    $validated = $request->validate([
-      'date' => 'sometimes|date',
-      'title' => 'sometimes|string|max:255',
-      'caption' => 'sometimes|string',
-    ]);
+    public function destroy($id)
+    {
+        try {
+            $agenda = Agenda::findOrFail($id);
+            $agenda->delete();
 
-    if ($agenda->update($validated)) {
-      return response()->json([
-        'success' => true,
-        'message' => 'Agenda updated successfully',
-        'data' => $agenda
-      ]);
-    } else {
-      return response()->json([
-        'success' => false,
-        'message' => 'Failed to update agenda'
-      ], 500);
+            return response()->json([
+                'status'  => true,
+                'message' => 'Agenda berhasil dihapus.'
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+
+            return response()->json([
+                'status'  => false,
+                'message' => 'Agenda tidak ditemukan.'
+            ], 404);
+
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'status'  => false,
+                'message' => 'Gagal menghapus agenda.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
     }
-  }
-
-
-
-  // Menghapus agenda
-  public function destroy($id)
-  {
-    $agenda = Agenda::find($id);
-
-    if (!$agenda) {
-      return response()->json(['message' => 'Agenda not found'], 404);
-    }
-
-    $agenda->delete();
-
-    return response()->json(['message' => 'Agenda deleted successfully']);
-  }
 }

@@ -22,12 +22,11 @@ use App\Http\Controllers\Api\KetuaApprovalController;
 Route::get('/testrapat/{rapatId}', [RapatController::class, 'hitungKuorumKehadiran']);
 
 //Konten GET untuk Public
-Route::get('/agenda', [AgendaController::class, 'index']);
-Route::get('/berita', [BeritaController::class, 'index']);
 Route::get('/galeri', [GaleriController::class, 'index']);
-Route::get('/jembot123', [ProfileController::class, 'getProfile']);
-Route::get('/berita/{berita_id}/komentar', [KomentarController::class, 'index']);
-Route::post('/berita/{berita_id}/komentar', [KomentarController::class, 'store']);
+Route::get('/profile', [ProfileController::class, 'index']);
+Route::get('/berita', [BeritaController::class, 'index']);
+Route::get('/agenda', [AgendaController::class, 'index']);
+// ----------------------------------------------------------------------------------//
 
 // Data untuk Public
 Route::get('/kota-kabupaten', [KotaKabupatenController::class, 'index']);
